@@ -4,8 +4,11 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/validators.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/service_order_item_provider.dart';
 import '../../providers/service_order_provider.dart';
+import '../../widgets/common/detroit_text_field.dart';
 import '../../widgets/common/detroit_app_bar.dart';
 import '../../widgets/common/detroit_button.dart';
 import '../../widgets/common/detroit_card.dart';
@@ -63,6 +66,58 @@ class OrdenDetallePage extends HookConsumerWidget {
       );
     }
 
+    Future<void> anularOrden() async {
+      final reasonController = TextEditingController();
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text('Anular orden'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Esta orden no se borra, queda registrada como anulada.',
+                style: AppTextStyles.body2,
+              ),
+              const SizedBox(height: 16),
+              DetroitTextField(
+                controller: reasonController,
+                label: 'Motivo de la anulación',
+                validator: Validators.validateRequired,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () {
+                if (reasonController.text.trim().isEmpty) return;
+                Navigator.pop(context, true);
+              },
+              child: const Text('ANULAR', style: TextStyle(color: AppColors.error)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !context.mounted) return;
+
+      final user = ref.read(authProvider).value;
+      if (user == null) return;
+      final result = await ref.read(serviceOrderRepositoryProvider).cancel(
+            orderId: orderId,
+            cancelledBy: user.id,
+            reason: reasonController.text.trim(),
+          );
+      result.fold(
+        (failure) => errorMessage.value = failure.message,
+        (_) {
+          ref.invalidate(serviceOrdersByStatusProvider('new'));
+          if (context.mounted) Navigator.of(context).pop();
+        },
+      );
+    }
+
     return Scaffold(
       appBar: const DetroitAppBar(title: 'Detalle de la orden'),
       body: orderAsync.when(
@@ -70,6 +125,7 @@ class OrdenDetallePage extends HookConsumerWidget {
         error: (error, stack) => Center(child: Text('Error: $error', style: const TextStyle(color: AppColors.error))),
         data: (order) {
           final isEditable = order.status == 'new';
+          final user = ref.watch(authProvider).value;
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -182,6 +238,14 @@ class OrdenDetallePage extends HookConsumerWidget {
                       ref.invalidate(serviceOrderByIdProvider(orderId));
                       if (context.mounted) showPagoModal(context, ref, order);
                     },
+                  ),
+                ],
+                if (isEditable && (user?.isAdminGeneral ?? false)) ...[
+                  const SizedBox(height: 12),
+                  DetroitButton(
+                    text: 'ANULAR ORDEN',
+                    type: DetroitButtonType.danger,
+                    onPressed: anularOrden,
                   ),
                 ],
               ],

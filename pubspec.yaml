@@ -22,7 +22,6 @@ dependencies:
   equatable: ^2.0.5
   dartz: ^0.10.1
   intl: ^0.20.2
-  flutter_dotenv: ^5.2.1
   # UI
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.17
@@ -44,4 +43,3 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
-    - .env

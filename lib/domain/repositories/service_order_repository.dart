@@ -21,6 +21,11 @@ abstract class ServiceOrderRepository {
     required double commissionPct,
   });
   Future<Either<Failure, void>> finalize(String orderId);
+  Future<Either<Failure, void>> cancel({
+    required String orderId,
+    required String cancelledBy,
+    required String reason,
+  });
   Future<Either<Failure, void>> settlePayment({
     required String orderId,
     required String companyId,

@@ -93,6 +93,21 @@ class ServiceOrderDataSource {
         .eq('id', orderId);
   }
 
+  /// Anula la orden en vez de borrarla (nunca se elimina información
+  /// financiera, se anula con motivo — sección 20 del documento original).
+  Future<void> cancel({
+    required String orderId,
+    required String cancelledBy,
+    required String reason,
+  }) async {
+    await _client.from('service_orders').update({
+      'status': 'cancelled',
+      'cancelled_at': DateTime.now().toUtc().toIso8601String(),
+      'cancelled_by': cancelledBy,
+      'cancel_reason': reason,
+    }).eq('id', orderId);
+  }
+
   /// Registra el pago (total o parcial) de una orden finalizada. Si queda un saldo
   /// pendiente (incluido el caso "Fiar" con abono = 0), crea la cuenta por cobrar
   /// y mueve la orden a 'receivable'. El trigger de la base de datos ya se encarga

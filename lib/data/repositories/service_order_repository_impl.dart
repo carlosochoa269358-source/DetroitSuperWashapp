@@ -75,6 +75,20 @@ class ServiceOrderRepositoryImpl implements ServiceOrderRepository {
   }
 
   @override
+  Future<Either<Failure, void>> cancel({
+    required String orderId,
+    required String cancelledBy,
+    required String reason,
+  }) async {
+    try {
+      await dataSource.cancel(orderId: orderId, cancelledBy: cancelledBy, reason: reason);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> settlePayment({
     required String orderId,
     required String companyId,

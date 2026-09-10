@@ -125,10 +125,13 @@ class _OrderCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(order.customerName ?? '—', style: AppTextStyles.body2),
-                if (order.serviceNames.isNotEmpty)
-                  Text(order.serviceNames.join(' + '), style: AppTextStyles.body2),
-                if (order.workerName != null)
-                  Text('Lavador: ${order.workerName}', style: AppTextStyles.caption),
+                Text(
+                  order.serviceNames.isNotEmpty ? order.serviceNames.join(' + ') : 'Sin servicios agregados',
+                  style: AppTextStyles.body2.copyWith(
+                    color: order.serviceNames.isNotEmpty ? AppColors.onBackground : AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
