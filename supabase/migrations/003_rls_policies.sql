@@ -53,26 +53,21 @@ BEGIN
   END LOOP;
 END $$;
 
--- service_order_workers no tiene company_id propio; su empresa se deriva de service_orders.
+-- service_order_workers no tiene company_id propio; su empresa se deriva de
+-- service_orders vía la función SECURITY DEFINER service_order_company_id(),
+-- NO con un EXISTS directo contra service_orders — eso crea una recursión
+-- infinita entre las políticas de ambas tablas en cuanto se consultan juntas
+-- (ej. traer una orden con su trabajador embebido).
 CREATE POLICY "service_order_workers_select" ON service_order_workers FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM service_orders so
-    WHERE so.id = service_order_workers.service_order_id AND so.company_id = get_user_company_id()
-  )
+  service_order_company_id(service_order_id) = get_user_company_id()
 );
 CREATE POLICY "service_order_workers_insert" ON service_order_workers FOR INSERT WITH CHECK (
   (is_admin_general() OR is_admin_punto())
-  AND EXISTS (
-    SELECT 1 FROM service_orders so
-    WHERE so.id = service_order_workers.service_order_id AND so.company_id = get_user_company_id()
-  )
+  AND service_order_company_id(service_order_id) = get_user_company_id()
 );
 CREATE POLICY "service_order_workers_update" ON service_order_workers FOR UPDATE USING (
   (is_admin_general() OR is_admin_punto())
-  AND EXISTS (
-    SELECT 1 FROM service_orders so
-    WHERE so.id = service_order_workers.service_order_id AND so.company_id = get_user_company_id()
-  )
+  AND service_order_company_id(service_order_id) = get_user_company_id()
 );
 
 -- Exceptions for monthly_closings and employee_settlements (Admin General Only for mutation)

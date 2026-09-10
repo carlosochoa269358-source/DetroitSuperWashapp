@@ -32,6 +32,19 @@ AS $$
   SELECT get_user_role() = 'admin_general';
 $$;
 
+-- 4b. service_order_company_id()
+-- SECURITY DEFINER para que las políticas de service_order_workers puedan
+-- comparar contra la empresa de la orden sin volver a pasar por las
+-- políticas de service_orders (evita recursión infinita entre ambas tablas).
+CREATE OR REPLACE FUNCTION service_order_company_id(p_service_order_id uuid)
+RETURNS uuid
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT company_id FROM service_orders WHERE id = p_service_order_id;
+$$;
+
 -- 4. is_admin_punto()
 CREATE OR REPLACE FUNCTION is_admin_punto()
 RETURNS boolean
