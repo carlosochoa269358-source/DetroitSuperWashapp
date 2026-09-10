@@ -85,6 +85,7 @@ class ClienteFormPage extends HookConsumerWidget {
               DetroitTextField(
                 controller: nameController,
                 label: 'Nombre completo',
+                uppercase: true,
                 validator: Validators.validateRequired,
               ),
               const SizedBox(height: 16),

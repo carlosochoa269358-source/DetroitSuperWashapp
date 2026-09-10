@@ -6,6 +6,7 @@ class AppRoutes {
   static const String turno = '/turno';
   static const String dashboard = '/dashboard';
   static const String nuevoServicio = '/servicios/nuevo';
+  static const String seleccionarServicio = '/servicios/seleccionar';
   static const String clientes = '/clientes';
   static const String clienteNuevo = '/clientes/nuevo';
   static const String clienteDetalle = '/clientes/:id';

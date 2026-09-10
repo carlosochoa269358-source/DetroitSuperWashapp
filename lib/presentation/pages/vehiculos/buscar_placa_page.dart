@@ -32,6 +32,7 @@ class BuscarPlacaPage extends HookConsumerWidget {
               controller: plateController,
               label: 'Placa',
               hint: 'ABC123',
+              uppercase: true,
             ),
             const SizedBox(height: 16),
             DetroitButton(

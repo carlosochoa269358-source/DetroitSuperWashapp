@@ -12,7 +12,8 @@ import 'presentation/pages/clientes/cliente_form_page.dart';
 import 'presentation/pages/clientes/clientes_list_page.dart';
 import 'presentation/pages/configuracion/configuracion_page.dart';
 import 'presentation/pages/dashboard/dashboard_page.dart';
-import 'presentation/pages/operacion/nuevo_servicio_page.dart';
+import 'presentation/pages/operacion/cliente_vehiculo_page.dart';
+import 'presentation/pages/operacion/seleccionar_servicio_page.dart';
 import 'presentation/pages/splash/splash_page.dart';
 import 'presentation/pages/turno/turno_page.dart';
 import 'presentation/pages/vehiculos/buscar_placa_page.dart';
@@ -73,7 +74,18 @@ class DetroitApp extends ConsumerWidget {
         ),
         GoRoute(
           path: AppRoutes.nuevoServicio,
-          builder: (context, state) => const NuevoServicioPage(),
+          builder: (context, state) => const ClienteVehiculoPage(),
+        ),
+        GoRoute(
+          path: AppRoutes.seleccionarServicio,
+          builder: (context, state) {
+            final data = state.extra as Map<String, dynamic>;
+            return SeleccionarServicioPage(
+              customerId: data['customerId'] as String,
+              vehicleId: data['vehicleId'] as String,
+              vehicleTypeId: data['vehicleTypeId'] as String?,
+            );
+          },
         ),
         GoRoute(
           path: AppRoutes.clientes,

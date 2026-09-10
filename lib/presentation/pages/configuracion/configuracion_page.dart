@@ -167,6 +167,7 @@ class _CategoryFormDialog extends HookConsumerWidget {
             DetroitTextField(
               controller: nameController,
               label: 'Nombre',
+              uppercase: true,
               validator: Validators.validateRequired,
             ),
             const SizedBox(height: 16),
@@ -233,25 +234,16 @@ class _ServicesTab extends ConsumerWidget {
         data: (services) {
           final categories = categoriesAsync.value ?? [];
           final vehicleTypes = vehicleTypesAsync.value ?? [];
-          String categoryName(String? id) =>
-              categories.firstWhere((c) => c.id == id, orElse: () => ServiceCategoryEntity(
-                    id: '',
-                    companyId: '',
-                    name: 'Sin categoría',
-                    sortOrder: 0,
-                    isActive: true,
-                  )).name;
+          String categoryName(String? id) {
+            final matches = categories.where((c) => c.id == id);
+            return matches.isEmpty ? 'Sin categoría' : matches.first.name;
+          }
+
           String priceSummary(ServiceEntity service) {
             if (service.pricesByVehicleType.isEmpty) return 'Sin precios configurados';
             return service.pricesByVehicleType.entries.map((entry) {
-              final typeName = vehicleTypes
-                  .firstWhere((t) => t.id == entry.key, orElse: () => VehicleTypeEntity(
-                        id: '',
-                        name: '?',
-                        sortOrder: 0,
-                        isActive: true,
-                      ))
-                  .name;
+              final typeMatches = vehicleTypes.where((t) => t.id == entry.key);
+              final typeName = typeMatches.isEmpty ? '?' : typeMatches.first.name;
               return '$typeName ${CurrencyFormatter.format(entry.value)}';
             }).join(' · ');
           }
@@ -368,6 +360,7 @@ class _ServiceFormDialog extends HookConsumerWidget {
                 DetroitTextField(
                   controller: nameController,
                   label: 'Nombre',
+              uppercase: true,
                   validator: Validators.validateRequired,
                 ),
                 const SizedBox(height: 16),
@@ -607,6 +600,7 @@ class _VehicleTypeFormDialog extends HookConsumerWidget {
         child: DetroitTextField(
           controller: nameController,
           label: 'Nombre',
+              uppercase: true,
           validator: Validators.validateRequired,
         ),
       ),
@@ -748,6 +742,7 @@ class _EmployeeFormDialog extends HookConsumerWidget {
             DetroitTextField(
               controller: nameController,
               label: 'Nombre completo',
+              uppercase: true,
               validator: Validators.validateRequired,
             ),
             const SizedBox(height: 16),
