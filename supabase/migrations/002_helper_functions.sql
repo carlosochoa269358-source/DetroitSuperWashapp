@@ -196,8 +196,15 @@ BEFORE INSERT OR UPDATE OF plate ON vehicles
 FOR EACH ROW EXECUTE FUNCTION uppercase_plate();
 
 -- Generate Order Number Function
+-- SECURITY DEFINER: crea una secuencia nueva por año (CREATE SEQUENCE), lo
+-- que exige permiso CREATE sobre el esquema — el usuario autenticado normal
+-- no lo tiene, solo el dueño de la base de datos.
 CREATE OR REPLACE FUNCTION generate_order_number(p_company_id uuid)
-RETURNS text AS $$
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   v_seq int;
   v_year text;
@@ -214,7 +221,7 @@ BEGIN
   v_num := lpad(v_seq::text, 6, '0');
   RETURN 'DSW-' || v_year || '-' || v_num;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE OR REPLACE FUNCTION trg_set_order_number()
 RETURNS TRIGGER AS $$
