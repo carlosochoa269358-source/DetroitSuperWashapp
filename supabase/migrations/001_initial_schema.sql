@@ -434,8 +434,8 @@ CREATE INDEX idx_expenses_category     ON expenses(category_id);
 
 COMMENT ON TABLE expenses IS 'Gastos operativos y compras. Nunca eliminar. Usar status=cancelled.';
 
--- Agregar FK de cash_movements a expenses (ahora que la tabla existe)
-ALTER TABLE cash_movements ADD COLUMN expense_id UUID REFERENCES expenses(id);
+-- Agregar FK de cash_movements a expenses (la columna ya existe, solo falta la restricción)
+ALTER TABLE cash_movements ADD CONSTRAINT fk_cash_movements_expense FOREIGN KEY (expense_id) REFERENCES expenses(id);
 
 -- =============================================
 -- 20. EMPLOYEE SETTLEMENTS (Liquidaciones)

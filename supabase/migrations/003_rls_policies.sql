@@ -43,7 +43,7 @@ CREATE POLICY "roles_select" ON roles FOR SELECT USING (true);
 DO $$ 
 DECLARE 
   t text;
-  tables text[] := ARRAY['employees', 'customers', 'vehicles', 'service_categories', 'services', 'cash_registers', 'service_orders', 'service_order_workers', 'payments', 'accounts_receivable', 'accounts_receivable_payments', 'cash_movements', 'expense_categories', 'expenses', 'employee_settlements', 'employee_settlement_items', 'daily_closings', 'monthly_closings', 'attachments', 'inventory_items'];
+  tables text[] := ARRAY['employees', 'customers', 'vehicles', 'service_categories', 'services', 'cash_registers', 'service_orders', 'payments', 'accounts_receivable', 'accounts_receivable_payments', 'cash_movements', 'expense_categories', 'expenses', 'employee_settlements', 'employee_settlement_items', 'daily_closings', 'monthly_closings', 'attachments', 'inventory_items'];
 BEGIN
   FOREACH t IN ARRAY tables
   LOOP
@@ -52,6 +52,28 @@ BEGIN
     EXECUTE format('CREATE POLICY "%I_update" ON %I FOR UPDATE USING (company_id = get_user_company_id() AND (is_admin_general() OR is_admin_punto()));', t, t);
   END LOOP;
 END $$;
+
+-- service_order_workers no tiene company_id propio; su empresa se deriva de service_orders.
+CREATE POLICY "service_order_workers_select" ON service_order_workers FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM service_orders so
+    WHERE so.id = service_order_workers.service_order_id AND so.company_id = get_user_company_id()
+  )
+);
+CREATE POLICY "service_order_workers_insert" ON service_order_workers FOR INSERT WITH CHECK (
+  (is_admin_general() OR is_admin_punto())
+  AND EXISTS (
+    SELECT 1 FROM service_orders so
+    WHERE so.id = service_order_workers.service_order_id AND so.company_id = get_user_company_id()
+  )
+);
+CREATE POLICY "service_order_workers_update" ON service_order_workers FOR UPDATE USING (
+  (is_admin_general() OR is_admin_punto())
+  AND EXISTS (
+    SELECT 1 FROM service_orders so
+    WHERE so.id = service_order_workers.service_order_id AND so.company_id = get_user_company_id()
+  )
+);
 
 -- Exceptions for monthly_closings and employee_settlements (Admin General Only for mutation)
 DROP POLICY IF EXISTS "monthly_closings_insert" ON monthly_closings;
