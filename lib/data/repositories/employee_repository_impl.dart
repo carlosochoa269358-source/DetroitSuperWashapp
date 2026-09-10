@@ -1,16 +1,16 @@
 import 'package:dartz/dartz.dart';
 import '../../core/errors/failures.dart';
-import '../../domain/entities/service_entity.dart';
-import '../../domain/repositories/service_repository.dart';
-import '../datasources/service_datasource.dart';
+import '../../domain/entities/employee_entity.dart';
+import '../../domain/repositories/employee_repository.dart';
+import '../datasources/employee_datasource.dart';
 
-class ServiceRepositoryImpl implements ServiceRepository {
-  final ServiceDataSource dataSource;
+class EmployeeRepositoryImpl implements EmployeeRepository {
+  final EmployeeDataSource dataSource;
 
-  ServiceRepositoryImpl(this.dataSource);
+  EmployeeRepositoryImpl(this.dataSource);
 
   @override
-  Future<Either<Failure, List<ServiceEntity>>> getAll(String companyId) async {
+  Future<Either<Failure, List<EmployeeEntity>>> getAll(String companyId) async {
     try {
       final result = await dataSource.getAll(companyId);
       return Right(result);
@@ -20,24 +20,18 @@ class ServiceRepositoryImpl implements ServiceRepository {
   }
 
   @override
-  Future<Either<Failure, ServiceEntity>> create({
+  Future<Either<Failure, EmployeeEntity>> create({
     required String companyId,
-    String? categoryId,
-    required String name,
-    String? description,
-    int? estimatedDurationMin,
+    required String fullName,
+    String? phone,
     required double commissionPct,
-    required Map<String, double> pricesByVehicleType,
   }) async {
     try {
       final result = await dataSource.create(
         companyId: companyId,
-        categoryId: categoryId,
-        name: name,
-        description: description,
-        estimatedDurationMin: estimatedDurationMin,
+        fullName: fullName,
+        phone: phone,
         commissionPct: commissionPct,
-        pricesByVehicleType: pricesByVehicleType,
       );
       return Right(result);
     } catch (e) {
@@ -46,24 +40,18 @@ class ServiceRepositoryImpl implements ServiceRepository {
   }
 
   @override
-  Future<Either<Failure, ServiceEntity>> update({
+  Future<Either<Failure, EmployeeEntity>> update({
     required String id,
-    String? categoryId,
-    required String name,
-    String? description,
-    int? estimatedDurationMin,
+    required String fullName,
+    String? phone,
     required double commissionPct,
-    required Map<String, double> pricesByVehicleType,
   }) async {
     try {
       final result = await dataSource.update(
         id: id,
-        categoryId: categoryId,
-        name: name,
-        description: description,
-        estimatedDurationMin: estimatedDurationMin,
+        fullName: fullName,
+        phone: phone,
         commissionPct: commissionPct,
-        pricesByVehicleType: pricesByVehicleType,
       );
       return Right(result);
     } catch (e) {

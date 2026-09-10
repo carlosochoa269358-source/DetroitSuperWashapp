@@ -55,7 +55,7 @@ final class VehicleTypeDataSourceProvider
 }
 
 String _$vehicleTypeDataSourceHash() =>
-    r'a02e8500f96dc89d626dcc885d9e398a3474606a';
+    r'ba55c455d8376ae6f93fbbceb4724532bc453226';
 
 @ProviderFor(vehicleTypeRepository)
 final vehicleTypeRepositoryProvider = VehicleTypeRepositoryProvider._();
@@ -103,7 +103,7 @@ final class VehicleTypeRepositoryProvider
 }
 
 String _$vehicleTypeRepositoryHash() =>
-    r'400dfa31f171e130c2e3f9563abf543e707cca2e';
+    r'bbc953f865b23fbc0561d3a67edd3b2ff1f4f741';
 
 @ProviderFor(vehicleTypes)
 final vehicleTypesProvider = VehicleTypesProvider._();
@@ -144,7 +144,7 @@ final class VehicleTypesProvider
   }
 }
 
-String _$vehicleTypesHash() => r'e3ff119f52079b98e75d6ecaaa830aa20ee5c7f7';
+String _$vehicleTypesHash() => r'3cd4947f82998624515234fbfdea64b5b636d2c8';
 
 @ProviderFor(serviceCategoryDataSource)
 final serviceCategoryDataSourceProvider = ServiceCategoryDataSourceProvider._();
@@ -192,7 +192,7 @@ final class ServiceCategoryDataSourceProvider
 }
 
 String _$serviceCategoryDataSourceHash() =>
-    r'80ba24d2ae30a9932fae0e9faecc9b3cd0328917';
+    r'3c97133476d00f29a856a94eca2f21c879cc14c9';
 
 @ProviderFor(serviceCategoryRepository)
 final serviceCategoryRepositoryProvider = ServiceCategoryRepositoryProvider._();
@@ -242,7 +242,7 @@ final class ServiceCategoryRepositoryProvider
 }
 
 String _$serviceCategoryRepositoryHash() =>
-    r'7a04b993d549596c2d59871d6eba939e1a63dec9';
+    r'0608a919d3fabdfbb2dcdd0ac00980cfceabf310';
 
 @ProviderFor(serviceCategories)
 final serviceCategoriesProvider = ServiceCategoriesProvider._();
@@ -283,7 +283,7 @@ final class ServiceCategoriesProvider
   }
 }
 
-String _$serviceCategoriesHash() => r'b007944ab25e4a9efa5b5086c974af9c3df34bad';
+String _$serviceCategoriesHash() => r'95b9532905b9f8df26c9e6ebc84ced03eb3ce93d';
 
 @ProviderFor(serviceDataSource)
 final serviceDataSourceProvider = ServiceDataSourceProvider._();
@@ -330,7 +330,7 @@ final class ServiceDataSourceProvider
   }
 }
 
-String _$serviceDataSourceHash() => r'32ef9913ee193e5c33761ca4c1cab42b32106f44';
+String _$serviceDataSourceHash() => r'ac365ab79707b9465ba714b6e93cb60d1e77e32f';
 
 @ProviderFor(serviceRepository)
 final serviceRepositoryProvider = ServiceRepositoryProvider._();
@@ -377,7 +377,7 @@ final class ServiceRepositoryProvider
   }
 }
 
-String _$serviceRepositoryHash() => r'0773fad38623b1cfa3ca7f4482acccd77b9de0c6';
+String _$serviceRepositoryHash() => r'aa02df85a63c8ceb5813dd633c59e242417a42dc';
 
 @ProviderFor(services)
 final servicesProvider = ServicesProvider._();
@@ -418,4 +418,4 @@ final class ServicesProvider
   }
 }
 
-String _$servicesHash() => r'd92b53a64b84324c3e2235dc06d2416f06f41dd0';
+String _$servicesHash() => r'789ba09268deecf9a56ce00b94d01a35bddc9f09';

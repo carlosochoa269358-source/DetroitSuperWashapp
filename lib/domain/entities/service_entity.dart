@@ -4,10 +4,9 @@ class ServiceEntity {
   final String? categoryId;
   final String name;
   final String? description;
-  final double basePrice;
   final int? estimatedDurationMin;
   final double commissionPct;
-  final List<String> applicableVehicleTypeIds;
+  final Map<String, double> pricesByVehicleType;
   final bool isActive;
 
   ServiceEntity({
@@ -16,10 +15,11 @@ class ServiceEntity {
     this.categoryId,
     required this.name,
     this.description,
-    required this.basePrice,
     this.estimatedDurationMin,
     required this.commissionPct,
-    required this.applicableVehicleTypeIds,
+    required this.pricesByVehicleType,
     required this.isActive,
   });
+
+  double? priceFor(String vehicleTypeId) => pricesByVehicleType[vehicleTypeId];
 }

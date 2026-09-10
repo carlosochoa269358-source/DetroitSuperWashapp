@@ -12,10 +12,13 @@ import 'presentation/pages/clientes/cliente_form_page.dart';
 import 'presentation/pages/clientes/clientes_list_page.dart';
 import 'presentation/pages/configuracion/configuracion_page.dart';
 import 'presentation/pages/dashboard/dashboard_page.dart';
+import 'presentation/pages/operacion/nuevo_servicio_page.dart';
 import 'presentation/pages/splash/splash_page.dart';
+import 'presentation/pages/turno/turno_page.dart';
 import 'presentation/pages/vehiculos/buscar_placa_page.dart';
 import 'presentation/pages/vehiculos/vehiculo_form_page.dart';
 import 'presentation/providers/auth_provider.dart';
+import 'presentation/providers/cash_register_provider.dart';
 
 class DetroitApp extends ConsumerWidget {
   const DetroitApp({super.key});
@@ -23,6 +26,7 @@ class DetroitApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateChangesProvider);
+    final turnoAsync = ref.watch(openCashRegisterTodayProvider);
 
     final router = GoRouter(
       initialLocation: AppRoutes.splash,
@@ -30,6 +34,7 @@ class DetroitApp extends ConsumerWidget {
         final isAuth = authState.value != null;
         final isSplash = state.uri.toString() == AppRoutes.splash;
         final isLogin = state.uri.toString() == AppRoutes.login;
+        final isTurno = state.uri.toString() == AppRoutes.turno;
 
         if (authState.isLoading) return null;
 
@@ -39,6 +44,12 @@ class DetroitApp extends ConsumerWidget {
 
         if (isAuth && (isLogin || isSplash)) {
           return AppRoutes.dashboard;
+        }
+
+        if (isAuth && !turnoAsync.isLoading) {
+          final hasTurnoToday = turnoAsync.value != null;
+          if (!hasTurnoToday && !isTurno) return AppRoutes.turno;
+          if (hasTurnoToday && isTurno) return AppRoutes.dashboard;
         }
 
         return null;
@@ -53,8 +64,16 @@ class DetroitApp extends ConsumerWidget {
           builder: (context, state) => const LoginPage(),
         ),
         GoRoute(
+          path: AppRoutes.turno,
+          builder: (context, state) => const TurnoPage(),
+        ),
+        GoRoute(
           path: AppRoutes.dashboard,
           builder: (context, state) => const DashboardPage(),
+        ),
+        GoRoute(
+          path: AppRoutes.nuevoServicio,
+          builder: (context, state) => const NuevoServicioPage(),
         ),
         GoRoute(
           path: AppRoutes.clientes,

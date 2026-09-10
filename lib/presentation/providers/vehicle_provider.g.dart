@@ -54,7 +54,7 @@ final class VehicleDataSourceProvider
   }
 }
 
-String _$vehicleDataSourceHash() => r'4fc9da9c31c41c58ae9e8cc2550e661c854da5aa';
+String _$vehicleDataSourceHash() => r'8652fce11e6ff993f292f4db8437d1b3bccdbb6b';
 
 @ProviderFor(vehicleRepository)
 final vehicleRepositoryProvider = VehicleRepositoryProvider._();
@@ -101,7 +101,7 @@ final class VehicleRepositoryProvider
   }
 }
 
-String _$vehicleRepositoryHash() => r'728a29cdcb8c353bae73513b0398a88ebe53e58f';
+String _$vehicleRepositoryHash() => r'5419f892518eb6cba51bf41ed7f2a05e8a811c38';
 
 @ProviderFor(vehiclesByCustomer)
 final vehiclesByCustomerProvider = VehiclesByCustomerFamily._();
@@ -161,7 +161,7 @@ final class VehiclesByCustomerProvider
 }
 
 String _$vehiclesByCustomerHash() =>
-    r'20f8628970a7ecc55ea997072c9da20f32146b05';
+    r'fac10ca5145ff8be54dc771b67f44c35ad1741b3';
 
 final class VehiclesByCustomerFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<List<VehicleEntity>>, String> {
@@ -236,7 +236,7 @@ final class VehicleByPlateProvider
   }
 }
 
-String _$vehicleByPlateHash() => r'e20f86c802092ad4b1e58cb27c247fb486d33536';
+String _$vehicleByPlateHash() => r'9283a0c96d28e110039d18d5c8bff5965407ae1e';
 
 final class VehicleByPlateFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<VehicleEntity?>, String> {

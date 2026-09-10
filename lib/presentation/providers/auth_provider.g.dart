@@ -48,7 +48,7 @@ final class AuthDataSourceProvider
   }
 }
 
-String _$authDataSourceHash() => r'f2aa00e74f286f7ba4803776e31fb05e72e2b74d';
+String _$authDataSourceHash() => r'7346fc93dd38b271b696c3cdf42ff0654f968e85';
 
 @ProviderFor(authRepository)
 final authRepositoryProvider = AuthRepositoryProvider._();
@@ -95,7 +95,7 @@ final class AuthRepositoryProvider
   }
 }
 
-String _$authRepositoryHash() => r'3a97c486cd1f41cb646f9982295984394ebb9917';
+String _$authRepositoryHash() => r'2b427679fd8aa568e7207d4c28c0aee05bdd7cf3';
 
 @ProviderFor(signInUseCase)
 final signInUseCaseProvider = SignInUseCaseProvider._();
@@ -136,7 +136,7 @@ final class SignInUseCaseProvider
   }
 }
 
-String _$signInUseCaseHash() => r'd8c4ca8799d3c785d724fcb12259fb8cb5c6f7aa';
+String _$signInUseCaseHash() => r'c6ac204cf3d8d14a9b5a14afd07c9c51c304a5c8';
 
 @ProviderFor(signOutUseCase)
 final signOutUseCaseProvider = SignOutUseCaseProvider._();
@@ -177,7 +177,7 @@ final class SignOutUseCaseProvider
   }
 }
 
-String _$signOutUseCaseHash() => r'3e06d6c315dc4710dd995e6114538ae28f4c3336';
+String _$signOutUseCaseHash() => r'952ce342ca22dc7bb696cc8e5787d2889240ef98';
 
 @ProviderFor(getCurrentUserUseCase)
 final getCurrentUserUseCaseProvider = GetCurrentUserUseCaseProvider._();
@@ -225,7 +225,7 @@ final class GetCurrentUserUseCaseProvider
 }
 
 String _$getCurrentUserUseCaseHash() =>
-    r'f7afd2183fc37b8586fc8394f1a7b20fc8ebaaa6';
+    r'4a27d130940e444424e46ed4afad7c5a5c8cf5b2';
 
 @ProviderFor(authStateChanges)
 final authStateChangesProvider = AuthStateChangesProvider._();
@@ -264,7 +264,7 @@ final class AuthStateChangesProvider
   }
 }
 
-String _$authStateChangesHash() => r'27a53a1b3f92e79b628b812cac78878d9ae713d2';
+String _$authStateChangesHash() => r'7621294cd37ffe2cc1e38ebbd4bb5451dd609c9c';
 
 @ProviderFor(AuthNotifier)
 final authProvider = AuthNotifierProvider._();

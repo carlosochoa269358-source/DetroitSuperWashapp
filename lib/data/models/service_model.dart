@@ -7,27 +7,30 @@ class ServiceModel extends ServiceEntity {
     super.categoryId,
     required super.name,
     super.description,
-    required super.basePrice,
     super.estimatedDurationMin,
     required super.commissionPct,
-    required super.applicableVehicleTypeIds,
+    required super.pricesByVehicleType,
     required super.isActive,
   });
 
+  /// Espera que la fila venga con el recurso embebido `service_prices(vehicle_type_id, price)`,
+  /// tal como lo devuelve `.select('*, service_prices(vehicle_type_id, price)')`.
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
+    final pricesRaw = json['service_prices'] as List<dynamic>? ?? const [];
+    final prices = <String, double>{
+      for (final row in pricesRaw)
+        (row as Map<String, dynamic>)['vehicle_type_id'] as String: (row['price'] as num).toDouble(),
+    };
+
     return ServiceModel(
       id: json['id'] as String,
       companyId: json['company_id'] as String,
       categoryId: json['category_id'] as String?,
       name: json['name'] as String,
       description: json['description'] as String?,
-      basePrice: (json['base_price'] as num).toDouble(),
       estimatedDurationMin: json['estimated_duration_min'] as int?,
       commissionPct: (json['commission_pct'] as num?)?.toDouble() ?? 40.0,
-      applicableVehicleTypeIds: (json['applicable_vehicle_types'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
+      pricesByVehicleType: prices,
       isActive: json['is_active'] as bool? ?? true,
     );
   }
@@ -39,10 +42,8 @@ class ServiceModel extends ServiceEntity {
       'category_id': categoryId,
       'name': name,
       'description': description,
-      'base_price': basePrice,
       'estimated_duration_min': estimatedDurationMin,
       'commission_pct': commissionPct,
-      'applicable_vehicle_types': applicableVehicleTypeIds,
       'is_active': isActive,
     };
   }

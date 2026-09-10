@@ -55,7 +55,7 @@ final class CustomerDataSourceProvider
 }
 
 String _$customerDataSourceHash() =>
-    r'7eab7c9728f6ca773f90454ea7946fe0d27999ee';
+    r'93268342421254b650b2eb418c40e22d5b957ff3';
 
 @ProviderFor(customerRepository)
 final customerRepositoryProvider = CustomerRepositoryProvider._();
@@ -103,7 +103,7 @@ final class CustomerRepositoryProvider
 }
 
 String _$customerRepositoryHash() =>
-    r'e3aebc5c187e6b0d639f84eb4e4c4aa448f34831';
+    r'e4dc2ad72fc99307084638ed652d56be3a35fce9';
 
 @ProviderFor(customerSearch)
 final customerSearchProvider = CustomerSearchFamily._();
@@ -162,7 +162,7 @@ final class CustomerSearchProvider
   }
 }
 
-String _$customerSearchHash() => r'ee52e8a4bb0bca7e64ea835d171a7bd4fcbea957';
+String _$customerSearchHash() => r'4b66218a84a319bceb83f7e045e7d6e95a55cf9d';
 
 final class CustomerSearchFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<List<CustomerEntity>>, String?> {
@@ -237,7 +237,7 @@ final class CustomerByIdProvider
   }
 }
 
-String _$customerByIdHash() => r'967b6e7f5cfbf617723d0512fbd26d953bdca5fa';
+String _$customerByIdHash() => r'2a9e364802be4b07957ba7d87d7e488d79628d88';
 
 final class CustomerByIdFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<CustomerEntity>, String> {

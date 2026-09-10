@@ -9,20 +9,18 @@ abstract class ServiceRepository {
     String? categoryId,
     required String name,
     String? description,
-    required double basePrice,
     int? estimatedDurationMin,
     required double commissionPct,
-    required List<String> applicableVehicleTypeIds,
+    required Map<String, double> pricesByVehicleType,
   });
   Future<Either<Failure, ServiceEntity>> update({
     required String id,
     String? categoryId,
     required String name,
     String? description,
-    required double basePrice,
     int? estimatedDurationMin,
     required double commissionPct,
-    required List<String> applicableVehicleTypeIds,
+    required Map<String, double> pricesByVehicleType,
   });
   Future<Either<Failure, void>> toggleActive({required String id, required bool isActive});
 }

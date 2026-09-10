@@ -5,11 +5,13 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/validators.dart';
+import '../../../domain/entities/employee_entity.dart';
 import '../../../domain/entities/service_category_entity.dart';
 import '../../../domain/entities/service_entity.dart';
 import '../../../domain/entities/vehicle_type_entity.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_provider.dart';
+import '../../providers/employee_provider.dart';
 import '../../widgets/common/detroit_app_bar.dart';
 import '../../widgets/common/detroit_button.dart';
 import '../../widgets/common/detroit_card.dart';
@@ -37,11 +39,12 @@ class ConfiguracionPage extends ConsumerWidget {
     }
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Configuración'),
           bottom: const TabBar(
+            isScrollable: true,
             indicatorColor: AppColors.primary,
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textMuted,
@@ -49,6 +52,7 @@ class ConfiguracionPage extends ConsumerWidget {
               Tab(text: 'Categorías'),
               Tab(text: 'Servicios'),
               Tab(text: 'Tipos de vehículo'),
+              Tab(text: 'Trabajadores'),
             ],
           ),
         ),
@@ -57,6 +61,7 @@ class ConfiguracionPage extends ConsumerWidget {
             _ServiceCategoriesTab(),
             _ServicesTab(),
             _VehicleTypesTab(),
+            _EmployeesTab(),
           ],
         ),
       ),
@@ -219,6 +224,7 @@ class _ServicesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final servicesAsync = ref.watch(servicesProvider);
     final categoriesAsync = ref.watch(serviceCategoriesProvider);
+    final vehicleTypesAsync = ref.watch(vehicleTypesProvider);
 
     return Scaffold(
       body: servicesAsync.when(
@@ -226,6 +232,7 @@ class _ServicesTab extends ConsumerWidget {
         error: (error, stack) => Center(child: Text('Error: $error')),
         data: (services) {
           final categories = categoriesAsync.value ?? [];
+          final vehicleTypes = vehicleTypesAsync.value ?? [];
           String categoryName(String? id) =>
               categories.firstWhere((c) => c.id == id, orElse: () => ServiceCategoryEntity(
                     id: '',
@@ -234,6 +241,20 @@ class _ServicesTab extends ConsumerWidget {
                     sortOrder: 0,
                     isActive: true,
                   )).name;
+          String priceSummary(ServiceEntity service) {
+            if (service.pricesByVehicleType.isEmpty) return 'Sin precios configurados';
+            return service.pricesByVehicleType.entries.map((entry) {
+              final typeName = vehicleTypes
+                  .firstWhere((t) => t.id == entry.key, orElse: () => VehicleTypeEntity(
+                        id: '',
+                        name: '?',
+                        sortOrder: 0,
+                        isActive: true,
+                      ))
+                  .name;
+              return '$typeName ${CurrencyFormatter.format(entry.value)}';
+            }).join(' · ');
+          }
 
           if (services.isEmpty) {
             return Center(child: Text('No hay servicios creados', style: AppTextStyles.body2));
@@ -256,7 +277,7 @@ class _ServicesTab extends ConsumerWidget {
                           Text(categoryName(service.categoryId), style: AppTextStyles.caption),
                           const SizedBox(height: 4),
                           Text(
-                            '${CurrencyFormatter.format(service.basePrice)} · Comisión ${service.commissionPct.toStringAsFixed(0)}%',
+                            '${priceSummary(service)} · Comisión ${service.commissionPct.toStringAsFixed(0)}%',
                             style: AppTextStyles.body2,
                           ),
                         ],
@@ -309,9 +330,6 @@ class _ServiceFormDialog extends HookConsumerWidget {
     final formKey = useMemoized(() => GlobalKey<FormState>());
     final nameController = useTextEditingController(text: service?.name);
     final descController = useTextEditingController(text: service?.description);
-    final priceController = useTextEditingController(
-      text: service?.basePrice.toStringAsFixed(0),
-    );
     final durationController = useTextEditingController(
       text: service?.estimatedDurationMin?.toString(),
     );
@@ -319,17 +337,28 @@ class _ServiceFormDialog extends HookConsumerWidget {
       text: (service?.commissionPct ?? 40.0).toStringAsFixed(0),
     );
     final selectedCategoryId = useState<String?>(service?.categoryId);
-    final selectedVehicleTypeIds = useState<Set<String>>(service?.applicableVehicleTypeIds.toSet() ?? {});
+    final selectedVehicleTypeIds = useState<Set<String>>(service?.pricesByVehicleType.keys.toSet() ?? {});
+    // Un controller de precio por cada tipo de vehículo, creado sobre la marcha.
+    final priceControllers = useRef<Map<String, TextEditingController>>({});
     final isSaving = useState(false);
 
     final categoriesAsync = ref.watch(serviceCategoriesProvider);
     final vehicleTypesAsync = ref.watch(vehicleTypesProvider);
 
+    TextEditingController priceControllerFor(String vehicleTypeId) {
+      return priceControllers.value.putIfAbsent(
+        vehicleTypeId,
+        () => TextEditingController(
+          text: service?.pricesByVehicleType[vehicleTypeId]?.toStringAsFixed(0),
+        ),
+      );
+    }
+
     return AlertDialog(
       backgroundColor: AppColors.surface,
       title: Text(service == null ? 'Nuevo servicio' : 'Editar servicio'),
       content: SizedBox(
-        width: 400,
+        width: 420,
         child: SingleChildScrollView(
           child: Form(
             key: formKey,
@@ -359,13 +388,6 @@ class _ServiceFormDialog extends HookConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 DetroitTextField(
-                  controller: priceController,
-                  label: 'Precio base',
-                  keyboardType: TextInputType.number,
-                  validator: (v) => Validators.validateRequired(v) ?? Validators.validateAmount(v),
-                ),
-                const SizedBox(height: 16),
-                DetroitTextField(
                   controller: commissionController,
                   label: '% Comisión trabajador',
                   keyboardType: TextInputType.number,
@@ -380,32 +402,56 @@ class _ServiceFormDialog extends HookConsumerWidget {
                 const SizedBox(height: 16),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Tipos de vehículo aplicables', style: AppTextStyles.body2),
+                  child: Text(
+                    'Selecciona los tipos de vehículo y su precio',
+                    style: AppTextStyles.body2,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 vehicleTypesAsync.when(
                   loading: () => const LoadingWidget(),
                   error: (error, stack) => Text('Error: $error'),
-                  data: (types) => Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: types.map((type) {
-                      final selected = selectedVehicleTypeIds.value.contains(type.id);
-                      return FilterChip(
-                        label: Text(type.name),
-                        selected: selected,
-                        selectedColor: AppColors.primary.withValues(alpha: 0.3),
-                        onSelected: (value) {
-                          final updated = Set<String>.from(selectedVehicleTypeIds.value);
-                          if (value) {
-                            updated.add(type.id);
-                          } else {
-                            updated.remove(type.id);
-                          }
-                          selectedVehicleTypeIds.value = updated;
-                        },
-                      );
-                    }).toList(),
+                  data: (types) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: types.map((type) {
+                          final selected = selectedVehicleTypeIds.value.contains(type.id);
+                          return FilterChip(
+                            label: Text(type.name),
+                            selected: selected,
+                            selectedColor: AppColors.primary.withValues(alpha: 0.3),
+                            onSelected: (value) {
+                              final updated = Set<String>.from(selectedVehicleTypeIds.value);
+                              if (value) {
+                                updated.add(type.id);
+                              } else {
+                                updated.remove(type.id);
+                              }
+                              selectedVehicleTypeIds.value = updated;
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      if (selectedVehicleTypeIds.value.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        ...selectedVehicleTypeIds.value.map((typeId) {
+                          final type = types.firstWhere((t) => t.id == typeId);
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: DetroitTextField(
+                              controller: priceControllerFor(typeId),
+                              label: 'Precio para ${type.name}',
+                              keyboardType: TextInputType.number,
+                              validator: (v) =>
+                                  Validators.validateRequired(v) ?? Validators.validateAmount(v),
+                            ),
+                          );
+                        }),
+                      ],
+                    ],
                   ),
                 ),
               ],
@@ -420,16 +466,25 @@ class _ServiceFormDialog extends HookConsumerWidget {
           fullWidth: false,
           isLoading: isSaving.value,
           onPressed: () async {
+            if (selectedVehicleTypeIds.value.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Selecciona al menos un tipo de vehículo')),
+              );
+              return;
+            }
             if (!formKey.currentState!.validate()) return;
             isSaving.value = true;
             final repo = ref.read(serviceRepositoryProvider);
-            final basePrice = Validators.validateAmount(priceController.text) == null
-                ? double.parse(priceController.text.replaceAll(RegExp(r'[^0-9]'), ''))
-                : 0.0;
             final commissionPct = double.tryParse(commissionController.text.trim()) ?? 40.0;
             final durationMin = durationController.text.trim().isEmpty
                 ? null
                 : int.tryParse(durationController.text.trim());
+            final prices = <String, double>{
+              for (final typeId in selectedVehicleTypeIds.value)
+                typeId: double.parse(
+                  priceControllerFor(typeId).text.replaceAll(RegExp(r'[^0-9]'), ''),
+                ),
+            };
 
             final result = service == null
                 ? await repo.create(
@@ -437,20 +492,18 @@ class _ServiceFormDialog extends HookConsumerWidget {
                     categoryId: selectedCategoryId.value,
                     name: nameController.text.trim(),
                     description: descController.text.trim().isEmpty ? null : descController.text.trim(),
-                    basePrice: basePrice,
                     estimatedDurationMin: durationMin,
                     commissionPct: commissionPct,
-                    applicableVehicleTypeIds: selectedVehicleTypeIds.value.toList(),
+                    pricesByVehicleType: prices,
                   )
                 : await repo.update(
                     id: service!.id,
                     categoryId: selectedCategoryId.value,
                     name: nameController.text.trim(),
                     description: descController.text.trim().isEmpty ? null : descController.text.trim(),
-                    basePrice: basePrice,
                     estimatedDurationMin: durationMin,
                     commissionPct: commissionPct,
-                    applicableVehicleTypeIds: selectedVehicleTypeIds.value.toList(),
+                    pricesByVehicleType: prices,
                   );
             isSaving.value = false;
             result.fold(
@@ -583,6 +636,167 @@ class _VehicleTypeFormDialog extends HookConsumerWidget {
                   .showSnackBar(SnackBar(content: Text(failure.message))),
               (_) {
                 ref.invalidate(vehicleTypesProvider);
+                if (context.mounted) Navigator.pop(context);
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================
+// TRABAJADORES
+// ============================================================
+
+class _EmployeesTab extends ConsumerWidget {
+  const _EmployeesTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final employeesAsync = ref.watch(employeesProvider);
+
+    return Scaffold(
+      body: employeesAsync.when(
+        loading: () => const LoadingWidget(),
+        error: (error, stack) => Center(child: Text('Error: $error')),
+        data: (employees) => employees.isEmpty
+            ? Center(child: Text('No hay trabajadores creados', style: AppTextStyles.body2))
+            : ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: employees.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final employee = employees[index];
+                  return DetroitCard(
+                    accentColor: employee.isActive ? AppColors.success : AppColors.textDisabled,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(employee.fullName, style: AppTextStyles.heading4),
+                              if (employee.phone != null) Text(employee.phone!, style: AppTextStyles.body2),
+                              Text(
+                                'Comisión ${employee.commissionPct.toStringAsFixed(0)}%',
+                                style: AppTextStyles.caption,
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: AppColors.textMuted),
+                          onPressed: () => _showEmployeeDialog(context, ref, employee: employee),
+                        ),
+                        Switch(
+                          value: employee.isActive,
+                          activeThumbColor: AppColors.primary,
+                          onChanged: (value) async {
+                            await ref.read(employeeRepositoryProvider).toggleActive(id: employee.id, isActive: value);
+                            ref.invalidate(employeesProvider);
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showEmployeeDialog(context, ref),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
+        icon: const Icon(Icons.add),
+        label: const Text('Nuevo trabajador'),
+      ),
+    );
+  }
+}
+
+void _showEmployeeDialog(BuildContext context, WidgetRef ref, {EmployeeEntity? employee}) {
+  showDialog(
+    context: context,
+    builder: (context) => _EmployeeFormDialog(employee: employee),
+  );
+}
+
+class _EmployeeFormDialog extends HookConsumerWidget {
+  final EmployeeEntity? employee;
+
+  const _EmployeeFormDialog({this.employee});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formKey = useMemoized(() => GlobalKey<FormState>());
+    final nameController = useTextEditingController(text: employee?.fullName);
+    final phoneController = useTextEditingController(text: employee?.phone);
+    final commissionController = useTextEditingController(
+      text: (employee?.commissionPct ?? 40.0).toStringAsFixed(0),
+    );
+    final isSaving = useState(false);
+
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: Text(employee == null ? 'Nuevo trabajador' : 'Editar trabajador'),
+      content: Form(
+        key: formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DetroitTextField(
+              controller: nameController,
+              label: 'Nombre completo',
+              validator: Validators.validateRequired,
+            ),
+            const SizedBox(height: 16),
+            DetroitTextField(
+              controller: phoneController,
+              label: 'Teléfono (opcional)',
+              keyboardType: TextInputType.phone,
+              validator: Validators.validatePhone,
+            ),
+            const SizedBox(height: 16),
+            DetroitTextField(
+              controller: commissionController,
+              label: '% Comisión',
+              keyboardType: TextInputType.number,
+              validator: Validators.validateRequired,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        DetroitButton(
+          text: 'GUARDAR',
+          fullWidth: false,
+          isLoading: isSaving.value,
+          onPressed: () async {
+            if (!formKey.currentState!.validate()) return;
+            isSaving.value = true;
+            final repo = ref.read(employeeRepositoryProvider);
+            final commissionPct = double.tryParse(commissionController.text.trim()) ?? 40.0;
+            final result = employee == null
+                ? await repo.create(
+                    companyId: ref.read(authProvider).value!.companyId,
+                    fullName: nameController.text.trim(),
+                    phone: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
+                    commissionPct: commissionPct,
+                  )
+                : await repo.update(
+                    id: employee!.id,
+                    fullName: nameController.text.trim(),
+                    phone: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
+                    commissionPct: commissionPct,
+                  );
+            isSaving.value = false;
+            result.fold(
+              (failure) => ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(failure.message))),
+              (_) {
+                ref.invalidate(employeesProvider);
                 if (context.mounted) Navigator.pop(context);
               },
             );
