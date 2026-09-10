@@ -7,6 +7,7 @@ class AppRoutes {
   static const String dashboard = '/dashboard';
   static const String nuevoServicio = '/servicios/nuevo';
   static const String seleccionarServicio = '/servicios/seleccionar';
+  static const String ordenDetalle = '/servicios/:id/detalle';
   static const String clientes = '/clientes';
   static const String clienteNuevo = '/clientes/nuevo';
   static const String clienteDetalle = '/clientes/:id';
@@ -24,4 +25,5 @@ class AppRoutes {
   static String clienteDetalleFor(String id) => '/clientes/$id';
   static String clienteEditarFor(String id) => '/clientes/$id/editar';
   static String vehiculoEditarFor(String id) => '/vehiculos/$id/editar';
+  static String ordenDetalleFor(String id) => '/servicios/$id/detalle';
 }

@@ -23,30 +23,40 @@ class ServiceOrderRepositoryImpl implements ServiceOrderRepository {
   }
 
   @override
-  Future<Either<Failure, ServiceOrderEntity>> create({
+  Future<Either<Failure, ServiceOrderEntity>> getById(String id) async {
+    try {
+      final result = await dataSource.getById(id);
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ServiceOrderEntity>> createOrderWithFirstService({
     required String companyId,
     required String cashRegisterId,
     required String customerId,
     required String vehicleId,
-    required String serviceId,
     required String createdBy,
+    required String employeeId,
+    required String serviceId,
     required double basePrice,
     required double discountAmount,
     required double commissionPct,
-    required String employeeId,
   }) async {
     try {
-      final result = await dataSource.create(
+      final result = await dataSource.createOrderWithFirstService(
         companyId: companyId,
         cashRegisterId: cashRegisterId,
         customerId: customerId,
         vehicleId: vehicleId,
-        serviceId: serviceId,
         createdBy: createdBy,
+        employeeId: employeeId,
+        serviceId: serviceId,
         basePrice: basePrice,
         discountAmount: discountAmount,
         commissionPct: commissionPct,
-        employeeId: employeeId,
       );
       return Right(result);
     } catch (e) {

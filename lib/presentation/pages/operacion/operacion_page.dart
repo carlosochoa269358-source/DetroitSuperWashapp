@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_routes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -123,12 +125,23 @@ class _OrderCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(order.customerName ?? '—', style: AppTextStyles.body2),
+                if (order.serviceNames.isNotEmpty)
+                  Text(order.serviceNames.join(' + '), style: AppTextStyles.body2),
                 if (order.workerName != null)
                   Text('Lavador: ${order.workerName}', style: AppTextStyles.caption),
               ],
             ),
           ),
-          if (order.status == 'new')
+          if (order.status == 'new') ...[
+            IconButton(
+              icon: const Icon(Icons.edit, color: AppColors.textMuted),
+              onPressed: order.vehicleTypeId == null
+                  ? null
+                  : () => context.push(
+                        AppRoutes.ordenDetalleFor(order.id),
+                        extra: order.vehicleTypeId,
+                      ),
+            ),
             ElevatedButton(
               onPressed: () async {
                 await ref.read(serviceOrderRepositoryProvider).finalize(order.id);
@@ -137,8 +150,8 @@ class _OrderCard extends ConsumerWidget {
               },
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: AppColors.background),
               child: const Text('Finalizar'),
-            )
-          else if (order.status == 'finished')
+            ),
+          ] else if (order.status == 'finished')
             ElevatedButton(
               onPressed: () => showPagoModal(context, ref, order),
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white),

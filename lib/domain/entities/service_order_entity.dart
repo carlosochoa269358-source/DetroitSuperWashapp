@@ -5,13 +5,10 @@ class ServiceOrderEntity {
   final String cashRegisterId;
   final String customerId;
   final String vehicleId;
-  final String serviceId;
   final String createdBy;
   final String status;
-  final double basePrice;
   final double discountAmount;
   final double finalPrice;
-  final double commissionPct;
   final double commissionAmount;
   final double paidAmount;
   final double pendingAmount;
@@ -23,8 +20,9 @@ class ServiceOrderEntity {
   final String? customerName;
   final String? customerPhone;
   final String? vehiclePlate;
+  final String? vehicleTypeId;
   final String? workerName;
-  final String? serviceName;
+  final List<String> serviceNames;
 
   ServiceOrderEntity({
     required this.id,
@@ -33,13 +31,10 @@ class ServiceOrderEntity {
     required this.cashRegisterId,
     required this.customerId,
     required this.vehicleId,
-    required this.serviceId,
     required this.createdBy,
     required this.status,
-    required this.basePrice,
     required this.discountAmount,
     required this.finalPrice,
-    required this.commissionPct,
     required this.commissionAmount,
     required this.paidAmount,
     required this.pendingAmount,
@@ -49,7 +44,8 @@ class ServiceOrderEntity {
     this.customerName,
     this.customerPhone,
     this.vehiclePlate,
+    this.vehicleTypeId,
     this.workerName,
-    this.serviceName,
+    this.serviceNames = const [],
   });
 }

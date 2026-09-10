@@ -19,6 +19,7 @@ class DetroitTextField extends HookWidget {
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
   final Widget? prefixIcon;
+  final ValueChanged<String>? onChanged;
 
   const DetroitTextField({
     super.key,
@@ -30,6 +31,7 @@ class DetroitTextField extends HookWidget {
     this.keyboardType = TextInputType.text,
     this.validator,
     this.prefixIcon,
+    this.onChanged,
   });
 
   @override
@@ -41,6 +43,7 @@ class DetroitTextField extends HookWidget {
       obscureText: obscureText.value,
       keyboardType: keyboardType,
       validator: validator,
+      onChanged: onChanged,
       textCapitalization: uppercase ? TextCapitalization.characters : TextCapitalization.none,
       inputFormatters: uppercase ? [_UpperCaseTextFormatter()] : null,
       style: const TextStyle(color: AppColors.onBackground),

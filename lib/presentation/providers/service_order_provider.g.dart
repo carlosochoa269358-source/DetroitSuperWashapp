@@ -182,3 +182,80 @@ final class ServiceOrdersByStatusFamily extends $Family
   @override
   String toString() => r'serviceOrdersByStatusProvider';
 }
+
+@ProviderFor(serviceOrderById)
+final serviceOrderByIdProvider = ServiceOrderByIdFamily._();
+
+final class ServiceOrderByIdProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<ServiceOrderEntity>,
+          ServiceOrderEntity,
+          FutureOr<ServiceOrderEntity>
+        >
+    with
+        $FutureModifier<ServiceOrderEntity>,
+        $FutureProvider<ServiceOrderEntity> {
+  ServiceOrderByIdProvider._({
+    required ServiceOrderByIdFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'serviceOrderByIdProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$serviceOrderByIdHash();
+
+  @override
+  String toString() {
+    return r'serviceOrderByIdProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<ServiceOrderEntity> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<ServiceOrderEntity> create(Ref ref) {
+    final argument = this.argument as String;
+    return serviceOrderById(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ServiceOrderByIdProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$serviceOrderByIdHash() => r'57f2fbb5d3882a7207165d660fd58626c262a8eb';
+
+final class ServiceOrderByIdFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<ServiceOrderEntity>, String> {
+  ServiceOrderByIdFamily._()
+    : super(
+        retry: null,
+        name: r'serviceOrderByIdProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  ServiceOrderByIdProvider call(String id) =>
+      ServiceOrderByIdProvider._(argument: id, from: this);
+
+  @override
+  String toString() => r'serviceOrderByIdProvider';
+}

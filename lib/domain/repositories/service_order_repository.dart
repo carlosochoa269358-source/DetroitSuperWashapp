@@ -7,17 +7,18 @@ abstract class ServiceOrderRepository {
     required String companyId,
     required String status,
   });
-  Future<Either<Failure, ServiceOrderEntity>> create({
+  Future<Either<Failure, ServiceOrderEntity>> getById(String id);
+  Future<Either<Failure, ServiceOrderEntity>> createOrderWithFirstService({
     required String companyId,
     required String cashRegisterId,
     required String customerId,
     required String vehicleId,
-    required String serviceId,
     required String createdBy,
+    required String employeeId,
+    required String serviceId,
     required double basePrice,
     required double discountAmount,
     required double commissionPct,
-    required String employeeId,
   });
   Future<Either<Failure, void>> finalize(String orderId);
   Future<Either<Failure, void>> settlePayment({

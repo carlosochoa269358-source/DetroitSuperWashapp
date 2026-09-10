@@ -7,9 +7,9 @@ class ServiceOrderDataSource {
   static const _selectWithJoins = '''
     *,
     customers(full_name, phone),
-    vehicles(plate),
-    services(name),
-    service_order_workers(employees(full_name))
+    vehicles(plate, vehicle_type_id),
+    service_order_workers(employees(full_name)),
+    service_order_items(id, services(name))
   ''';
 
   Future<List<ServiceOrderModel>> getByStatus({
@@ -25,22 +25,26 @@ class ServiceOrderDataSource {
     return (data as List).map((e) => ServiceOrderModel.fromJson(e)).toList();
   }
 
-  Future<ServiceOrderModel> create({
+  Future<ServiceOrderModel> getById(String id) async {
+    final data = await _client.from('service_orders').select(_selectWithJoins).eq('id', id).single();
+    return ServiceOrderModel.fromJson(data);
+  }
+
+  /// Crea el encabezado de la orden + el único trabajador asignado + la
+  /// primera línea de servicio. El trigger de la base de datos recalcula
+  /// los totales del encabezado a partir de esa primera línea.
+  Future<ServiceOrderModel> createOrderWithFirstService({
     required String companyId,
     required String cashRegisterId,
     required String customerId,
     required String vehicleId,
-    required String serviceId,
     required String createdBy,
+    required String employeeId,
+    required String serviceId,
     required double basePrice,
     required double discountAmount,
     required double commissionPct,
-    required String employeeId,
   }) async {
-    final finalPrice = basePrice - discountAmount;
-    final commissionAmount = finalPrice * commissionPct / 100;
-    final detroitAmount = finalPrice - commissionAmount;
-
     final order = await _client
         .from('service_orders')
         .insert({
@@ -48,22 +52,32 @@ class ServiceOrderDataSource {
           'cash_register_id': cashRegisterId,
           'customer_id': customerId,
           'vehicle_id': vehicleId,
-          'service_id': serviceId,
           'created_by': createdBy,
-          'base_price': basePrice,
-          'discount_amount': discountAmount,
-          'final_price': finalPrice,
-          'commission_pct': commissionPct,
-          'commission_amount': commissionAmount,
-          'detroit_amount': detroitAmount,
+          'discount_amount': 0,
+          'final_price': 0,
+          'commission_amount': 0,
+          'detroit_amount': 0,
         })
         .select()
         .single();
 
     final orderId = order['id'] as String;
+
     await _client.from('service_order_workers').insert({
       'service_order_id': orderId,
       'employee_id': employeeId,
+      'commission_pct': commissionPct,
+      'commission_amount': 0,
+    });
+
+    final finalPrice = basePrice - discountAmount;
+    final commissionAmount = finalPrice * commissionPct / 100;
+    await _client.from('service_order_items').insert({
+      'service_order_id': orderId,
+      'service_id': serviceId,
+      'base_price': basePrice,
+      'discount_amount': discountAmount,
+      'final_price': finalPrice,
       'commission_pct': commissionPct,
       'commission_amount': commissionAmount,
     });

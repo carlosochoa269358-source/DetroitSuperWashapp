@@ -13,6 +13,7 @@ import 'presentation/pages/clientes/clientes_list_page.dart';
 import 'presentation/pages/configuracion/configuracion_page.dart';
 import 'presentation/pages/dashboard/dashboard_page.dart';
 import 'presentation/pages/operacion/cliente_vehiculo_page.dart';
+import 'presentation/pages/operacion/orden_detalle_page.dart';
 import 'presentation/pages/operacion/seleccionar_servicio_page.dart';
 import 'presentation/pages/splash/splash_page.dart';
 import 'presentation/pages/turno/turno_page.dart';
@@ -86,6 +87,13 @@ class DetroitApp extends ConsumerWidget {
               vehicleTypeId: data['vehicleTypeId'] as String?,
             );
           },
+        ),
+        GoRoute(
+          path: AppRoutes.ordenDetalle,
+          builder: (context, state) => OrdenDetallePage(
+            orderId: state.pathParameters['id']!,
+            vehicleTypeId: state.extra as String,
+          ),
         ),
         GoRoute(
           path: AppRoutes.clientes,

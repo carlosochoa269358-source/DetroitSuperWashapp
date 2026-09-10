@@ -22,3 +22,10 @@ Future<List<ServiceOrderEntity>> serviceOrdersByStatus(Ref ref, String status) a
   final result = await repo.getByStatus(companyId: user.companyId, status: status);
   return result.fold((failure) => throw Exception(failure.message), (list) => list);
 }
+
+@riverpod
+Future<ServiceOrderEntity> serviceOrderById(Ref ref, String id) async {
+  final repo = ref.watch(serviceOrderRepositoryProvider);
+  final result = await repo.getById(id);
+  return result.fold((failure) => throw Exception(failure.message), (order) => order);
+}
