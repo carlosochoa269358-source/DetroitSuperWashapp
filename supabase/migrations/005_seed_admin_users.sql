@@ -4,8 +4,8 @@
 --
 -- REQUISITO: antes de correr este script, crea en Authentication > Users
 -- (Add user, con "Auto Confirm User" activado) las cuentas:
---   - diegoalbeiroo@gmail.com
---   - andres--8a@hotmail.com
+--   - diego.ochoa@detroitgirardota.com
+--   - andres.ochoa@detroitgirardota.com
 
 DO $$
 DECLARE
@@ -28,8 +28,8 @@ BEGIN
   FROM auth.users au
   JOIN (
     VALUES
-      ('diegoalbeiroo@gmail.com', 'Diego Ochoa'),
-      ('andres--8a@hotmail.com', 'Andres Ochoa')
+      ('diego.ochoa@detroitgirardota.com', 'Diego Ochoa'),
+      ('andres.ochoa@detroitgirardota.com', 'Andres Ochoa')
   ) AS admins(email, full_name) ON au.email = admins.email
   ON CONFLICT (id) DO UPDATE
     SET role_id = EXCLUDED.role_id,
