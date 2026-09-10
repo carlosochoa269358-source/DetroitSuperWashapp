@@ -45,6 +45,29 @@ AS $$
   SELECT company_id FROM service_orders WHERE id = p_service_order_id;
 $$;
 
+-- 4c. accounts_receivable_company_id() y settlement_company_id()
+-- Mismo patrón que service_order_company_id(): SECURITY DEFINER para que
+-- las tablas hijas sin company_id propio (accounts_receivable_payments,
+-- employee_settlement_items) puedan filtrar por empresa sin re-entrar a
+-- las políticas de su tabla padre.
+CREATE OR REPLACE FUNCTION accounts_receivable_company_id(p_ar_id uuid)
+RETURNS uuid
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT company_id FROM accounts_receivable WHERE id = p_ar_id;
+$$;
+
+CREATE OR REPLACE FUNCTION settlement_company_id(p_settlement_id uuid)
+RETURNS uuid
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT company_id FROM employee_settlements WHERE id = p_settlement_id;
+$$;
+
 -- 4. is_admin_punto()
 CREATE OR REPLACE FUNCTION is_admin_punto()
 RETURNS boolean

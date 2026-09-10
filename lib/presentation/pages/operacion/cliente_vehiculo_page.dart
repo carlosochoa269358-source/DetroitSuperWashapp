@@ -187,6 +187,21 @@ class ClienteVehiculoPage extends HookConsumerWidget {
             ],
             const SizedBox(height: 16),
             if (vehicleAsync.isLoading) const LoadingWidget(),
+            if (vehicleAsync.hasError) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.error),
+                ),
+                child: Text(
+                  'No se pudo buscar la placa: ${vehicleAsync.error}',
+                  style: const TextStyle(color: AppColors.error),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             if (foundVehicle != null) ...[
               DetroitCard(
                 accentColor: AppColors.success,
@@ -210,7 +225,7 @@ class ClienteVehiculoPage extends HookConsumerWidget {
               ),
               const SizedBox(height: 24),
               DetroitButton(text: 'CONTINUAR', onPressed: continuarConVehiculoExistente),
-            ] else if (lookupPlate.value != null) ...[
+            ] else if (lookupPlate.value != null && !vehicleAsync.isLoading && !vehicleAsync.hasError) ...[
               Text('Placa nueva', style: AppTextStyles.heading4),
               const SizedBox(height: 12),
               Row(

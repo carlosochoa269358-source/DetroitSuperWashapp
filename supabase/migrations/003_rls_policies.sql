@@ -43,7 +43,11 @@ CREATE POLICY "roles_select" ON roles FOR SELECT USING (true);
 DO $$ 
 DECLARE 
   t text;
-  tables text[] := ARRAY['employees', 'customers', 'vehicles', 'service_categories', 'services', 'cash_registers', 'service_orders', 'payments', 'accounts_receivable', 'accounts_receivable_payments', 'cash_movements', 'expense_categories', 'expenses', 'employee_settlements', 'employee_settlement_items', 'daily_closings', 'monthly_closings', 'attachments', 'inventory_items'];
+  -- payments, accounts_receivable_payments y employee_settlement_items NO
+  -- tienen company_id propio (se relacionan indirectamente) y se manejan
+  -- aparte, más abajo, con funciones SECURITY DEFINER — igual que
+  -- service_order_workers.
+  tables text[] := ARRAY['employees', 'customers', 'vehicles', 'service_categories', 'services', 'cash_registers', 'service_orders', 'accounts_receivable', 'cash_movements', 'expense_categories', 'expenses', 'employee_settlements', 'daily_closings', 'monthly_closings', 'attachments', 'inventory_items'];
 BEGIN
   FOREACH t IN ARRAY tables
   LOOP
@@ -68,6 +72,43 @@ CREATE POLICY "service_order_workers_insert" ON service_order_workers FOR INSERT
 CREATE POLICY "service_order_workers_update" ON service_order_workers FOR UPDATE USING (
   (is_admin_general() OR is_admin_punto())
   AND service_order_company_id(service_order_id) = get_user_company_id()
+);
+
+-- payments: se relaciona a través de service_orders (mismo patrón que arriba).
+CREATE POLICY "payments_select" ON payments FOR SELECT USING (
+  service_order_company_id(service_order_id) = get_user_company_id()
+);
+CREATE POLICY "payments_insert" ON payments FOR INSERT WITH CHECK (
+  (is_admin_general() OR is_admin_punto())
+  AND service_order_company_id(service_order_id) = get_user_company_id()
+);
+CREATE POLICY "payments_update" ON payments FOR UPDATE USING (
+  (is_admin_general() OR is_admin_punto())
+  AND service_order_company_id(service_order_id) = get_user_company_id()
+);
+
+-- accounts_receivable_payments: se relaciona a través de accounts_receivable.
+CREATE POLICY "accounts_receivable_payments_select" ON accounts_receivable_payments FOR SELECT USING (
+  accounts_receivable_company_id(accounts_receivable_id) = get_user_company_id()
+);
+CREATE POLICY "accounts_receivable_payments_insert" ON accounts_receivable_payments FOR INSERT WITH CHECK (
+  (is_admin_general() OR is_admin_punto())
+  AND accounts_receivable_company_id(accounts_receivable_id) = get_user_company_id()
+);
+CREATE POLICY "accounts_receivable_payments_update" ON accounts_receivable_payments FOR UPDATE USING (
+  (is_admin_general() OR is_admin_punto())
+  AND accounts_receivable_company_id(accounts_receivable_id) = get_user_company_id()
+);
+
+-- employee_settlement_items: se relaciona a través de employee_settlements.
+CREATE POLICY "employee_settlement_items_select" ON employee_settlement_items FOR SELECT USING (
+  settlement_company_id(settlement_id) = get_user_company_id()
+);
+CREATE POLICY "employee_settlement_items_insert" ON employee_settlement_items FOR INSERT WITH CHECK (
+  is_admin_general() AND settlement_company_id(settlement_id) = get_user_company_id()
+);
+CREATE POLICY "employee_settlement_items_update" ON employee_settlement_items FOR UPDATE USING (
+  is_admin_general() AND settlement_company_id(settlement_id) = get_user_company_id()
 );
 
 -- Exceptions for monthly_closings and employee_settlements (Admin General Only for mutation)
