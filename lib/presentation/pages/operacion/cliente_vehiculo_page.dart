@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -7,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/utils/debounce_hook.dart';
 import '../../../core/utils/validators.dart';
 import '../../../domain/entities/customer_entity.dart';
 import '../../providers/auth_provider.dart';
@@ -46,28 +45,22 @@ class ClienteVehiculoPage extends HookConsumerWidget {
     final isSaving = useState(false);
     final errorMessage = useState<String?>(null);
 
-    useEffect(() {
-      final timer = Timer(const Duration(milliseconds: 400), () {
-        final raw = plateController.text.trim().toUpperCase().replaceAll(' ', '');
-        if (raw.isEmpty) {
-          lookupPlate.value = null;
-          plateError.value = null;
-          return;
-        }
-        final error = Validators.validatePlate(raw);
-        plateError.value = error;
-        lookupPlate.value = error == null ? raw : null;
-      });
-      return timer.cancel;
-    }, [plateController.text]);
+    useDebouncedTextListener(plateController, (text) {
+      final raw = text.trim().toUpperCase().replaceAll(' ', '');
+      if (raw.isEmpty) {
+        lookupPlate.value = null;
+        plateError.value = null;
+        return;
+      }
+      final error = Validators.validatePlate(raw);
+      plateError.value = error;
+      lookupPlate.value = error == null ? raw : null;
+    });
 
-    useEffect(() {
-      final timer = Timer(const Duration(milliseconds: 350), () {
-        final q = searchController.text.trim();
-        searchQuery.value = q.isEmpty ? null : q;
-      });
-      return timer.cancel;
-    }, [searchController.text]);
+    useDebouncedTextListener(searchController, (text) {
+      final q = text.trim();
+      searchQuery.value = q.isEmpty ? null : q;
+    });
 
     final vehicleAsync = lookupPlate.value == null
         ? const AsyncValue<dynamic>.data(null)
