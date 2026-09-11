@@ -23,8 +23,8 @@ class CashRegisterDataSource {
   }
 
   /// Efectivo esperado en caja: pagos directos en efectivo + abonos de
-  /// fiados en efectivo, menos lo que ya se liquidó a trabajadores en
-  /// efectivo durante el turno.
+  /// fiados en efectivo, menos lo que ya se liquidó a trabajadores y menos
+  /// los gastos pagados en efectivo durante el turno.
   Future<double> cashPaymentsTotal(String cashRegisterId) async {
     final payments = await _client
         .from('payments')
@@ -43,6 +43,12 @@ class CashRegisterDataSource {
         .eq('cash_register_id', cashRegisterId)
         .eq('payment_method', 'efectivo')
         .eq('is_reversed', false);
+    final expenses = await _client
+        .from('expenses')
+        .select('amount')
+        .eq('cash_register_id', cashRegisterId)
+        .eq('payment_method', 'efectivo')
+        .eq('status', 'active');
 
     double total = 0;
     for (final row in [...(payments as List), ...(abonos as List)]) {
@@ -50,6 +56,9 @@ class CashRegisterDataSource {
     }
     for (final row in settlements as List) {
       total -= (row['commission_paid'] as num).toDouble();
+    }
+    for (final row in expenses as List) {
+      total -= (row['amount'] as num).toDouble();
     }
     return total;
   }

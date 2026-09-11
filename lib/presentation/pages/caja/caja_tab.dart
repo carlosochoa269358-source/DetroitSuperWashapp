@@ -9,11 +9,14 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/validators.dart';
 import '../../../domain/entities/employee_pending_summary_entity.dart';
+import '../../../domain/entities/expense_category_entity.dart';
+import '../../../domain/entities/expense_entity.dart';
 import '../../../domain/entities/service_order_entity.dart';
 import '../../../domain/entities/turno_settlement_entity.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cash_register_provider.dart';
 import '../../providers/employee_settlement_provider.dart';
+import '../../providers/expense_provider.dart';
 import '../../providers/service_order_provider.dart';
 import '../../widgets/common/detroit_button.dart';
 import '../../widgets/common/detroit_card.dart';
@@ -67,6 +70,10 @@ class CajaTab extends ConsumerWidget {
               if (user?.isAdminGeneral ?? false) ...[
                 const SizedBox(height: 16),
                 _LiquidacionCard(cashRegisterId: register.id),
+              ],
+              if ((user?.isAdminGeneral ?? false) || (user?.isAdminPunto ?? false)) ...[
+                const SizedBox(height: 16),
+                _GastosCard(cashRegisterId: register.id),
               ],
               const SizedBox(height: 16),
               _TotalGeneralCard(cashRegisterId: register.id),
@@ -428,6 +435,290 @@ void _showReversarLiquidacionDialog(
   );
 }
 
+/// Gastos activos del turno (insumos, arriendo, reparaciones, etc.), con
+/// botón para registrar uno nuevo y anular los que se registren por error.
+class _GastosCard extends ConsumerWidget {
+  final String cashRegisterId;
+
+  const _GastosCard({required this.cashRegisterId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final expensesAsync = ref.watch(expensesByRegisterProvider(cashRegisterId));
+    final user = ref.watch(authProvider).value;
+
+    return DetroitCard(
+      accentColor: AppColors.primary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Gastos del turno', style: AppTextStyles.heading4),
+              TextButton.icon(
+                onPressed: () => _showAgregarGastoSheet(context, ref, cashRegisterId),
+                icon: const Icon(Icons.add, color: AppColors.primary, size: 18),
+                label: const Text('Agregar gasto', style: TextStyle(color: AppColors.primary)),
+              ),
+            ],
+          ),
+          expensesAsync.when(
+            loading: () => const LoadingWidget(),
+            error: (error, stack) => Text('Error: $error', style: const TextStyle(color: AppColors.error)),
+            data: (expenses) {
+              if (expenses.isEmpty) {
+                return Text('No hay gastos registrados en este turno.', style: AppTextStyles.body2);
+              }
+              double total = 0;
+              final rows = <Widget>[];
+              for (final expense in expenses) {
+                total += expense.amount;
+                rows.add(Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(expense.description, style: AppTextStyles.body2),
+                            Text(
+                              '${expense.categoryName ?? '—'} · ${paymentMethodLabels[expense.paymentMethod] ?? expense.paymentMethod}',
+                              style: AppTextStyles.caption,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(CurrencyFormatter.format(expense.amount), style: AppTextStyles.body2),
+                      if (user?.isAdminGeneral ?? false)
+                        IconButton(
+                          icon: const Icon(Icons.close, color: AppColors.error, size: 18),
+                          tooltip: 'Anular gasto',
+                          onPressed: () => _showAnularGastoDialog(context, ref, cashRegisterId, expense),
+                        ),
+                    ],
+                  ),
+                ));
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ...rows,
+                  const Divider(color: AppColors.divider),
+                  _ResumenRow(label: 'Total', value: CurrencyFormatter.format(total), isTotal: true),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+void _showAgregarGastoSheet(BuildContext context, WidgetRef ref, String cashRegisterId) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: AppColors.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    builder: (context) => _AgregarGastoSheet(cashRegisterId: cashRegisterId),
+  );
+}
+
+class _AgregarGastoSheet extends HookConsumerWidget {
+  final String cashRegisterId;
+
+  const _AgregarGastoSheet({required this.cashRegisterId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categoriesAsync = ref.watch(expenseCategoriesProvider);
+    final descriptionController = useTextEditingController();
+    final amountController = useTextEditingController();
+    final providerController = useTextEditingController();
+    final selectedCategoryId = useState<String?>(null);
+    final selectedMethod = useState<String>('efectivo');
+    final isSaving = useState(false);
+    final errorMessage = useState<String?>(null);
+
+    String categoryLabel(ExpenseCategoryEntity category, List<ExpenseCategoryEntity> all) {
+      if (category.parentId == null) return category.name;
+      final parent = all.where((c) => c.id == category.parentId);
+      return parent.isEmpty ? category.name : '${parent.first.name} > ${category.name}';
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Agregar gasto', style: AppTextStyles.heading3),
+            const SizedBox(height: 16),
+            if (errorMessage.value != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.error),
+                ),
+                child: Text(errorMessage.value!, style: const TextStyle(color: AppColors.error)),
+              ),
+              const SizedBox(height: 16),
+            ],
+            categoriesAsync.when(
+              loading: () => const LoadingWidget(),
+              error: (error, stack) => Text('Error: $error', style: const TextStyle(color: AppColors.error)),
+              data: (categories) => DropdownButtonFormField<String>(
+                initialValue: selectedCategoryId.value,
+                decoration: const InputDecoration(labelText: 'Categoría'),
+                dropdownColor: AppColors.surface2,
+                items: categories
+                    .map((c) => DropdownMenuItem(value: c.id, child: Text(categoryLabel(c, categories))))
+                    .toList(),
+                onChanged: (value) => selectedCategoryId.value = value,
+              ),
+            ),
+            const SizedBox(height: 16),
+            DetroitTextField(controller: descriptionController, label: 'Descripción'),
+            const SizedBox(height: 16),
+            DetroitTextField(
+              controller: amountController,
+              label: 'Monto',
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            DetroitTextField(controller: providerController, label: 'Proveedor (opcional)'),
+            const SizedBox(height: 16),
+            Text('Método de pago', style: AppTextStyles.body2),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: paymentMethodLabels.entries.map((entry) {
+                return ChoiceChip(
+                  label: Text(entry.value),
+                  selected: selectedMethod.value == entry.key,
+                  selectedColor: AppColors.primary.withValues(alpha: 0.3),
+                  onSelected: (_) => selectedMethod.value = entry.key,
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
+            DetroitButton(
+              text: 'REGISTRAR GASTO',
+              isLoading: isSaving.value,
+              onPressed: () async {
+                errorMessage.value = null;
+                final user = ref.read(authProvider).value;
+                if (user == null) return;
+
+                if (selectedCategoryId.value == null) {
+                  errorMessage.value = 'Selecciona una categoría.';
+                  return;
+                }
+                if (descriptionController.text.trim().isEmpty) {
+                  errorMessage.value = 'Escribe una descripción.';
+                  return;
+                }
+                final amount = double.tryParse(amountController.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+                if (amount <= 0) {
+                  errorMessage.value = 'El monto debe ser mayor a cero.';
+                  return;
+                }
+
+                isSaving.value = true;
+                final result = await ref.read(expenseRepositoryProvider).create(
+                      companyId: user.companyId,
+                      categoryId: selectedCategoryId.value!,
+                      cashRegisterId: cashRegisterId,
+                      registeredBy: user.id,
+                      description: descriptionController.text.trim(),
+                      amount: amount,
+                      paymentMethod: selectedMethod.value,
+                      provider: providerController.text.trim().isEmpty ? null : providerController.text.trim(),
+                    );
+                isSaving.value = false;
+                result.fold(
+                  (failure) => errorMessage.value = failure.message,
+                  (_) {
+                    ref.invalidate(expensesByRegisterProvider(cashRegisterId));
+                    ref.invalidate(cashPaymentsTotalProvider(cashRegisterId));
+                    if (context.mounted) Navigator.of(context).pop();
+                  },
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+void _showAnularGastoDialog(BuildContext context, WidgetRef ref, String cashRegisterId, ExpenseEntity expense) async {
+  final reasonController = TextEditingController();
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: const Text('Anular gasto'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Esto anula "${expense.description}" (${CurrencyFormatter.format(expense.amount)}). No se borra, queda registrado como anulado.',
+            style: AppTextStyles.body2,
+          ),
+          const SizedBox(height: 16),
+          DetroitTextField(
+            controller: reasonController,
+            label: 'Motivo de la anulación',
+            validator: Validators.validateRequired,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+        TextButton(
+          onPressed: () {
+            if (reasonController.text.trim().isEmpty) return;
+            Navigator.pop(context, true);
+          },
+          child: const Text('ANULAR', style: TextStyle(color: AppColors.error)),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  final user = ref.read(authProvider).value;
+  if (user == null) return;
+
+  final result = await ref.read(expenseRepositoryProvider).cancel(
+        expenseId: expense.id,
+        cancelledBy: user.id,
+        reason: reasonController.text.trim(),
+      );
+  result.fold(
+    (failure) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(failure.message))),
+    (_) {
+      ref.invalidate(expensesByRegisterProvider(cashRegisterId));
+      ref.invalidate(cashPaymentsTotalProvider(cashRegisterId));
+    },
+  );
+}
+
 /// Resumen final del turno: lo bruto por método, lo liquidado a trabajadores
 /// (siempre en negativo, sin importar el método), y el neto por método.
 class _TotalGeneralCard extends ConsumerWidget {
@@ -439,6 +730,7 @@ class _TotalGeneralCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final totalsAsync = ref.watch(paymentMethodTotalsProvider(cashRegisterId));
     final settledAsync = ref.watch(turnoSettlementsProvider(cashRegisterId));
+    final expensesAsync = ref.watch(expensesByRegisterProvider(cashRegisterId));
 
     return DetroitCard(
       accentColor: AppColors.primary,
@@ -447,12 +739,14 @@ class _TotalGeneralCard extends ConsumerWidget {
         children: [
           Text('Total general', style: AppTextStyles.heading4),
           const SizedBox(height: 8),
-          if (totalsAsync.isLoading || settledAsync.isLoading)
+          if (totalsAsync.isLoading || settledAsync.isLoading || expensesAsync.isLoading)
             const LoadingWidget()
           else if (totalsAsync.hasError)
             Text('Error: ${totalsAsync.error}', style: const TextStyle(color: AppColors.error))
           else if (settledAsync.hasError)
             Text('Error: ${settledAsync.error}', style: const TextStyle(color: AppColors.error))
+          else if (expensesAsync.hasError)
+            Text('Error: ${expensesAsync.error}', style: const TextStyle(color: AppColors.error))
           else
             Builder(builder: (context) {
               final bruto = <String, double>{
@@ -462,14 +756,19 @@ class _TotalGeneralCard extends ConsumerWidget {
               for (final s in settledAsync.value!) {
                 liquidado[s.paymentMethod] = (liquidado[s.paymentMethod] ?? 0) + s.commissionPaid;
               }
-              final methods = {...bruto.keys, ...liquidado.keys}.toList()
+              final gastado = <String, double>{};
+              for (final e in expensesAsync.value!) {
+                gastado[e.paymentMethod] = (gastado[e.paymentMethod] ?? 0) + e.amount;
+              }
+              final methods = {...bruto.keys, ...liquidado.keys, ...gastado.keys}.toList()
                 ..sort((a, b) => paymentMethodLabels.keys.toList().indexOf(a).compareTo(
                       paymentMethodLabels.keys.toList().indexOf(b),
                     ));
 
               final totalBruto = bruto.values.fold<double>(0, (sum, v) => sum + v);
               final totalTrabajadores = liquidado.values.fold<double>(0, (sum, v) => sum + v);
-              final totalGeneral = totalBruto - totalTrabajadores;
+              final totalGastos = gastado.values.fold<double>(0, (sum, v) => sum + v);
+              final totalGeneral = totalBruto - totalTrabajadores - totalGastos;
 
               if (methods.isEmpty) {
                 return Text('Todavía no hay movimientos en este turno.', style: AppTextStyles.body2);
@@ -489,6 +788,12 @@ class _TotalGeneralCard extends ConsumerWidget {
                       value: '-${CurrencyFormatter.format(totalTrabajadores)}',
                       isNegative: true,
                     ),
+                  if (totalGastos > 0)
+                    _ResumenRow(
+                      label: 'Gastos',
+                      value: '-${CurrencyFormatter.format(totalGastos)}',
+                      isNegative: true,
+                    ),
                   const Divider(color: AppColors.divider),
                   _ResumenRow(
                     label: 'Total general',
@@ -500,8 +805,10 @@ class _TotalGeneralCard extends ConsumerWidget {
                   for (final method in methods)
                     _ResumenRow(
                       label: 'Total en ${paymentMethodLabels[method] ?? method}',
-                      value: CurrencyFormatter.format((bruto[method] ?? 0) - (liquidado[method] ?? 0)),
-                      isNegative: (bruto[method] ?? 0) - (liquidado[method] ?? 0) < 0,
+                      value: CurrencyFormatter.format(
+                        (bruto[method] ?? 0) - (liquidado[method] ?? 0) - (gastado[method] ?? 0),
+                      ),
+                      isNegative: (bruto[method] ?? 0) - (liquidado[method] ?? 0) - (gastado[method] ?? 0) < 0,
                     ),
                 ],
               );
