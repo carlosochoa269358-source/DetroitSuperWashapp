@@ -29,3 +29,14 @@ Future<VehicleEntity?> vehicleByPlate(Ref ref, String plate) async {
   final result = await repo.getByPlate(companyId: user.companyId, plate: plate);
   return result.fold((failure) => throw Exception(failure.message), (vehicle) => vehicle);
 }
+
+/// Búsqueda parcial de placas (cualquier coincidencia, no exacta) para
+/// "Buscar por placa".
+@riverpod
+Future<List<VehicleEntity>> vehicleSearchByPlate(Ref ref, String query) async {
+  final user = ref.watch(authProvider).value;
+  if (user == null || query.trim().isEmpty) return [];
+  final repo = ref.watch(vehicleRepositoryProvider);
+  final result = await repo.searchByPlate(companyId: user.companyId, query: query);
+  return result.fold((failure) => throw Exception(failure.message), (list) => list);
+}

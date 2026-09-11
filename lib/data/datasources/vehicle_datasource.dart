@@ -25,6 +25,21 @@ class VehicleDataSource {
     return VehicleModel.fromJson(data);
   }
 
+  /// Búsqueda parcial: cualquier vehículo cuya placa CONTENGA lo escrito
+  /// (no tiene que ser exacta ni empezar por ahí), para "Buscar por placa".
+  Future<List<VehicleModel>> searchByPlate({required String companyId, required String query}) async {
+    final q = query.toUpperCase().replaceAll(' ', '');
+    if (q.isEmpty) return [];
+    final data = await _client
+        .from('vehicles')
+        .select()
+        .eq('company_id', companyId)
+        .ilike('plate', '%$q%')
+        .order('plate')
+        .limit(50);
+    return (data as List).map((e) => VehicleModel.fromJson(e)).toList();
+  }
+
   Future<VehicleModel> create({
     required String companyId,
     required String customerId,

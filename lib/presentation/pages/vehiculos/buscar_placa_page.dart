@@ -5,12 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/constants/app_text_styles.dart';
-import '../../../core/utils/currency_formatter.dart';
-import '../../providers/customer_provider.dart';
+import '../../../core/utils/debounce_hook.dart';
+import '../../../domain/entities/vehicle_entity.dart';
 import '../../providers/vehicle_provider.dart';
-import '../../widgets/common/detroit_button.dart';
 import '../../widgets/common/detroit_card.dart';
-import '../../widgets/common/detroit_text_field.dart';
 import '../../widgets/common/loading_widget.dart';
 
 class BuscarPlacaPage extends HookConsumerWidget {
@@ -18,117 +16,111 @@ class BuscarPlacaPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final plateController = useTextEditingController();
-    final searchedPlate = useState<String?>(null);
+    final searchController = useTextEditingController();
+    final query = useState<String?>(null);
+
+    useDebouncedTextListener(searchController, (text) {
+      query.value = text.trim().isEmpty ? null : text.trim();
+    });
 
     return Scaffold(
       appBar: AppBar(title: const Text('Buscar por placa')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DetroitTextField(
-              controller: plateController,
-              label: 'Placa',
-              hint: 'ABC123',
-              uppercase: true,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: searchController,
+              textCapitalization: TextCapitalization.characters,
+              style: const TextStyle(color: AppColors.onBackground),
+              decoration: InputDecoration(
+                hintText: 'Escribe cualquier parte de la placa',
+                prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                filled: true,
+                fillColor: AppColors.surface2,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
-            DetroitButton(
-              text: 'BUSCAR',
-              onPressed: () => searchedPlate.value = plateController.text.trim().toUpperCase().replaceAll(' ', ''),
-            ),
-            const SizedBox(height: 24),
-            if (searchedPlate.value != null && searchedPlate.value!.isNotEmpty)
-              Expanded(child: _VehicleResult(plate: searchedPlate.value!)),
-          ],
-        ),
+          ),
+          Expanded(
+            child: query.value == null
+                ? Center(
+                    child: Text('Escribe para buscar', style: AppTextStyles.body2),
+                  )
+                : _SearchResults(query: query.value!),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _VehicleResult extends ConsumerWidget {
-  final String plate;
+class _SearchResults extends ConsumerWidget {
+  final String query;
 
-  const _VehicleResult({required this.plate});
+  const _SearchResults({required this.query});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final vehicleAsync = ref.watch(vehicleByPlateProvider(plate));
+    final vehiclesAsync = ref.watch(vehicleSearchByPlateProvider(query));
 
-    return vehicleAsync.when(
+    return vehiclesAsync.when(
       loading: () => const LoadingWidget(),
-      error: (error, stack) => Text('Error: $error', style: const TextStyle(color: AppColors.error)),
-      data: (vehicle) {
-        if (vehicle == null) {
+      error: (error, stack) => Center(
+        child: Text('Error: $error', style: const TextStyle(color: AppColors.error)),
+      ),
+      data: (vehicles) {
+        if (vehicles.isEmpty) {
           return Center(
-            child: Text('No se encontró ningún vehículo con placa $plate', style: AppTextStyles.body2),
+            child: Text('No se encontró ningún vehículo con "$query"', style: AppTextStyles.body2),
           );
         }
-        final customerAsync = ref.watch(customerByIdProvider(vehicle.customerId));
-        return SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DetroitCard(
-                accentColor: AppColors.primary,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(vehicle.plate, style: AppTextStyles.heading3),
-                    const SizedBox(height: 4),
-                    Text(
-                      [vehicle.brand, vehicle.model, vehicle.color]
-                          .where((e) => e != null && e.isNotEmpty)
-                          .join(' · '),
-                      style: AppTextStyles.body2,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              customerAsync.when(
-                loading: () => const LoadingWidget(),
-                error: (error, stack) => Text('Error: $error', style: const TextStyle(color: AppColors.error)),
-                data: (customer) => InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => context.push(AppRoutes.clienteDetalleFor(customer.id)),
-                  child: DetroitCard(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(customer.fullName, style: AppTextStyles.heading4),
-                              Text(customer.phone, style: AppTextStyles.body2),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${customer.visitCount} visitas · ${CurrencyFormatter.format(customer.totalSpent)} histórico',
-                                style: AppTextStyles.caption,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right, color: AppColors.textMuted),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text('Historial de servicios', style: AppTextStyles.heading4),
-              const SizedBox(height: 8),
-              Text(
-                'Aún no hay servicios registrados. Este módulo se activa en la Fase 4 (Operación de servicios).',
-                style: AppTextStyles.body2,
-              ),
-            ],
-          ),
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: vehicles.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (context, index) => _VehicleResultCard(vehicle: vehicles[index]),
         );
       },
+    );
+  }
+}
+
+class _VehicleResultCard extends StatelessWidget {
+  final VehicleEntity vehicle;
+
+  const _VehicleResultCard({required this.vehicle});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => context.push(AppRoutes.clienteDetalleFor(vehicle.customerId)),
+      child: DetroitCard(
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(vehicle.plate, style: AppTextStyles.heading4),
+                  const SizedBox(height: 4),
+                  Text(
+                    [vehicle.brand, vehicle.model, vehicle.color]
+                        .where((e) => e != null && e.isNotEmpty)
+                        .join(' · '),
+                    style: AppTextStyles.body2,
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textMuted),
+          ],
+        ),
+      ),
     );
   }
 }

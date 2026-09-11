@@ -255,3 +255,95 @@ final class VehicleByPlateFamily extends $Family
   @override
   String toString() => r'vehicleByPlateProvider';
 }
+
+/// Búsqueda parcial de placas (cualquier coincidencia, no exacta) para
+/// "Buscar por placa".
+
+@ProviderFor(vehicleSearchByPlate)
+final vehicleSearchByPlateProvider = VehicleSearchByPlateFamily._();
+
+/// Búsqueda parcial de placas (cualquier coincidencia, no exacta) para
+/// "Buscar por placa".
+
+final class VehicleSearchByPlateProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<VehicleEntity>>,
+          List<VehicleEntity>,
+          FutureOr<List<VehicleEntity>>
+        >
+    with
+        $FutureModifier<List<VehicleEntity>>,
+        $FutureProvider<List<VehicleEntity>> {
+  /// Búsqueda parcial de placas (cualquier coincidencia, no exacta) para
+  /// "Buscar por placa".
+  VehicleSearchByPlateProvider._({
+    required VehicleSearchByPlateFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'vehicleSearchByPlateProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$vehicleSearchByPlateHash();
+
+  @override
+  String toString() {
+    return r'vehicleSearchByPlateProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<VehicleEntity>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<VehicleEntity>> create(Ref ref) {
+    final argument = this.argument as String;
+    return vehicleSearchByPlate(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is VehicleSearchByPlateProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$vehicleSearchByPlateHash() =>
+    r'df6c342738d68641528b8c6500f6d78cab908e3d';
+
+/// Búsqueda parcial de placas (cualquier coincidencia, no exacta) para
+/// "Buscar por placa".
+
+final class VehicleSearchByPlateFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<VehicleEntity>>, String> {
+  VehicleSearchByPlateFamily._()
+    : super(
+        retry: null,
+        name: r'vehicleSearchByPlateProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Búsqueda parcial de placas (cualquier coincidencia, no exacta) para
+  /// "Buscar por placa".
+
+  VehicleSearchByPlateProvider call(String query) =>
+      VehicleSearchByPlateProvider._(argument: query, from: this);
+
+  @override
+  String toString() => r'vehicleSearchByPlateProvider';
+}

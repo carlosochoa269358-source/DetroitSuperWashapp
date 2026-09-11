@@ -30,6 +30,16 @@ class VehicleRepositoryImpl implements VehicleRepository {
   }
 
   @override
+  Future<Either<Failure, List<VehicleEntity>>> searchByPlate({required String companyId, required String query}) async {
+    try {
+      final result = await dataSource.searchByPlate(companyId: companyId, query: query);
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, VehicleEntity>> create({
     required String companyId,
     required String customerId,
