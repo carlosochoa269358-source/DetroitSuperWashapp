@@ -19,6 +19,7 @@ dependencies:
   # Navigation
   go_router: ^15.1.1
   # Utils
+  shared_preferences: ^2.3.3
   equatable: ^2.0.5
   dartz: ^0.10.1
   intl: ^0.20.2

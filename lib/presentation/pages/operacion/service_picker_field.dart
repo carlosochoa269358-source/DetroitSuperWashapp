@@ -44,13 +44,13 @@ class ServicePickerField extends HookConsumerWidget {
     final suggestedPrice =
         selectedService != null && vehicleTypeId != null ? selectedService.priceFor(vehicleTypeId) ?? 0.0 : 0.0;
 
-    void notify() {
+    void notifyWith(ServiceEntity? service, double basePrice) {
       final finalPrice = double.tryParse(priceController.text.replaceAll(RegExp(r'[^0-9]'), ''));
-      if (selectedService == null || finalPrice == null || finalPrice <= 0) {
+      if (service == null || finalPrice == null || finalPrice <= 0) {
         onChanged(null);
         return;
       }
-      onChanged(ServiceSelection(service: selectedService, basePrice: suggestedPrice, finalPrice: finalPrice));
+      onChanged(ServiceSelection(service: service, basePrice: basePrice, finalPrice: finalPrice));
     }
 
     if (vehicleTypeId == null) {
@@ -86,10 +86,12 @@ class ServicePickerField extends HookConsumerWidget {
               onChanged: (value) {
                 selectedServiceId.value = value;
                 final match = availableServices.where((s) => s.id == value);
-                if (match.isNotEmpty) {
-                  priceController.text = (match.first.priceFor(vehicleTypeId) ?? 0).toStringAsFixed(0);
+                final service = match.isEmpty ? null : match.first;
+                final price = service != null ? (service.priceFor(vehicleTypeId) ?? 0.0) : 0.0;
+                if (service != null) {
+                  priceController.text = price.toStringAsFixed(0);
                 }
-                notify();
+                notifyWith(service, price);
               },
             ),
             if (selectedService != null) ...[
@@ -98,7 +100,7 @@ class ServicePickerField extends HookConsumerWidget {
                 controller: priceController,
                 label: 'Precio a cobrar (editable)',
                 keyboardType: TextInputType.number,
-                onChanged: (_) => notify(),
+                onChanged: (_) => notifyWith(selectedService, suggestedPrice),
               ),
               const SizedBox(height: 8),
               Text('Precio sugerido: ${CurrencyFormatter.format(suggestedPrice)}', style: AppTextStyles.caption),

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/validators.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/detroit_button.dart';
 import '../../widgets/common/detroit_text_field.dart';
+
+const _rememberedEmailKey = 'remembered_email';
 
 class LoginPage extends HookConsumerWidget {
   const LoginPage({super.key});
@@ -16,7 +19,19 @@ class LoginPage extends HookConsumerWidget {
     final formKey = useMemoized(() => GlobalKey<FormState>());
     final emailController = useTextEditingController();
     final passwordController = useTextEditingController();
-    
+    final rememberMe = useState(false);
+
+    useEffect(() {
+      SharedPreferences.getInstance().then((prefs) {
+        final saved = prefs.getString(_rememberedEmailKey);
+        if (saved != null && saved.isNotEmpty) {
+          emailController.text = saved;
+          rememberMe.value = true;
+        }
+      });
+      return null;
+    }, const []);
+
     final authState = ref.watch(authProvider);
 
     return Scaffold(
@@ -62,16 +77,34 @@ class LoginPage extends HookConsumerWidget {
                     isPassword: true,
                     validator: Validators.validateRequired,
                   ),
-                  const SizedBox(height: 32),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: rememberMe.value,
+                        activeColor: AppColors.primary,
+                        onChanged: (value) => rememberMe.value = value ?? false,
+                      ),
+                      Text('Recordar mi usuario', style: AppTextStyles.body2),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   DetroitButton(
                     text: 'INICIAR SESIÓN',
                     isLoading: authState.isLoading,
-                    onPressed: () {
+                    onPressed: () async {
                       if (formKey.currentState!.validate()) {
-                        ref.read(authProvider.notifier).signIn(
-                              emailController.text.trim(),
-                              passwordController.text,
-                            );
+                        final prefs = await SharedPreferences.getInstance();
+                        if (rememberMe.value) {
+                          await prefs.setString(_rememberedEmailKey, emailController.text.trim());
+                        } else {
+                          await prefs.remove(_rememberedEmailKey);
+                        }
+                        if (context.mounted) {
+                          ref.read(authProvider.notifier).signIn(
+                                emailController.text.trim(),
+                                passwordController.text,
+                              );
+                        }
                       }
                     },
                   ),
