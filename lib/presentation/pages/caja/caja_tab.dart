@@ -156,6 +156,7 @@ class _CerrarTurnoSheet extends HookConsumerWidget {
                 (_) {
                   ref.invalidate(anyOpenCashRegisterProvider);
                   ref.invalidate(openCashRegisterTodayProvider);
+                  ref.invalidate(closedCashRegistersProvider);
                   if (context.mounted) {
                     Navigator.of(context).pop();
                     context.go(AppRoutes.turno);

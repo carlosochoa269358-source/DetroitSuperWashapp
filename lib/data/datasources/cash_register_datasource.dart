@@ -56,6 +56,18 @@ class CashRegisterDataSource {
     return CashRegisterModel.fromJson(data);
   }
 
+  /// Cuenta las órdenes del turno que todavía no se resolvieron (ni pagadas,
+  /// ni fiadas, ni anuladas). Se usa para dar un mensaje claro antes de
+  /// intentar cerrar — la base de datos también lo bloquea como respaldo.
+  Future<int> countUnresolvedOrders(String cashRegisterId) async {
+    final data = await _client
+        .from('service_orders')
+        .select('id')
+        .eq('cash_register_id', cashRegisterId)
+        .inFilter('status', ['new', 'finished']);
+    return (data as List).length;
+  }
+
   Future<void> close({
     required String id,
     required String closedBy,
@@ -63,6 +75,13 @@ class CashRegisterDataSource {
     required double countedAmount,
     String? differenceReason,
   }) async {
+    final pending = await countUnresolvedOrders(id);
+    if (pending > 0) {
+      throw Exception(
+        'No se puede cerrar el turno: hay $pending orden(es) sin terminar o sin cobrar todavía.',
+      );
+    }
+
     await _client
         .from('cash_registers')
         .update({
@@ -75,5 +94,20 @@ class CashRegisterDataSource {
           'closed_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', id);
+  }
+
+  /// Turnos cerrados de la empresa, con quién los abrió/cerró, para el historial.
+  Future<List<CashRegisterModel>> getClosedHistory(String companyId) async {
+    final data = await _client
+        .from('cash_registers')
+        .select('''
+          *,
+          opened_by_user:users!cash_registers_opened_by_fkey(full_name),
+          closed_by_user:users!cash_registers_closed_by_fkey(full_name)
+        ''')
+        .eq('company_id', companyId)
+        .eq('status', 'closed')
+        .order('closed_at', ascending: false);
+    return (data as List).map((e) => CashRegisterModel.fromJson(e)).toList();
   }
 }

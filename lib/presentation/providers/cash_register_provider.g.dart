@@ -270,3 +270,50 @@ final class CashPaymentsTotalFamily extends $Family
   @override
   String toString() => r'cashPaymentsTotalProvider';
 }
+
+/// Turnos cerrados de la empresa, para la pantalla de historial.
+
+@ProviderFor(closedCashRegisters)
+final closedCashRegistersProvider = ClosedCashRegistersProvider._();
+
+/// Turnos cerrados de la empresa, para la pantalla de historial.
+
+final class ClosedCashRegistersProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<CashRegisterEntity>>,
+          List<CashRegisterEntity>,
+          FutureOr<List<CashRegisterEntity>>
+        >
+    with
+        $FutureModifier<List<CashRegisterEntity>>,
+        $FutureProvider<List<CashRegisterEntity>> {
+  /// Turnos cerrados de la empresa, para la pantalla de historial.
+  ClosedCashRegistersProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'closedCashRegistersProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$closedCashRegistersHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<CashRegisterEntity>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<CashRegisterEntity>> create(Ref ref) {
+    return closedCashRegisters(ref);
+  }
+}
+
+String _$closedCashRegistersHash() =>
+    r'7dc995e6baff032e766de739edd5472839d38108';

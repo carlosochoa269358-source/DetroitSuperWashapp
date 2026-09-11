@@ -6,7 +6,10 @@ abstract class ServiceOrderRepository {
   Future<Either<Failure, List<ServiceOrderEntity>>> getByStatus({
     required String companyId,
     required String status,
+    String? cashRegisterId,
   });
+  Future<Either<Failure, List<ServiceOrderEntity>>> getCreatedInRegister(String cashRegisterId);
+  Future<Either<Failure, List<ServiceOrderEntity>>> getPaidInRegister(String cashRegisterId);
   Future<Either<Failure, ServiceOrderEntity>> getById(String id);
   Future<Either<Failure, ServiceOrderEntity>> createOrderWithFirstService({
     required String companyId,

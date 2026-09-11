@@ -4,6 +4,8 @@ class AppRoutes {
   static const String splash = '/splash';
   static const String login = '/login';
   static const String turno = '/turno';
+  static const String turnoHistorial = '/turno/historial';
+  static const String turnoHistorialDetalle = '/turno/historial/:id';
   static const String dashboard = '/dashboard';
   static const String nuevoServicio = '/servicios/nuevo';
   static const String seleccionarServicio = '/servicios/seleccionar';
@@ -26,4 +28,5 @@ class AppRoutes {
   static String clienteEditarFor(String id) => '/clientes/$id/editar';
   static String vehiculoEditarFor(String id) => '/vehiculos/$id/editar';
   static String ordenDetalleFor(String id) => '/servicios/$id/detalle';
+  static String turnoHistorialDetalleFor(String id) => '/turno/historial/$id';
 }

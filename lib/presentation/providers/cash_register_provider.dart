@@ -46,3 +46,13 @@ Future<double> cashPaymentsTotal(Ref ref, String cashRegisterId) async {
   final result = await repo.cashPaymentsTotal(cashRegisterId);
   return result.fold((failure) => throw Exception(failure.message), (total) => total);
 }
+
+/// Turnos cerrados de la empresa, para la pantalla de historial.
+@riverpod
+Future<List<CashRegisterEntity>> closedCashRegisters(Ref ref) async {
+  final user = ref.watch(authProvider).value;
+  if (user == null) return [];
+  final repo = ref.watch(cashRegisterRepositoryProvider);
+  final result = await repo.getClosedHistory(user.companyId);
+  return result.fold((failure) => throw Exception(failure.message), (list) => list);
+}

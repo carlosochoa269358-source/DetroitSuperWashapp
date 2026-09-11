@@ -13,9 +13,34 @@ class ServiceOrderRepositoryImpl implements ServiceOrderRepository {
   Future<Either<Failure, List<ServiceOrderEntity>>> getByStatus({
     required String companyId,
     required String status,
+    String? cashRegisterId,
   }) async {
     try {
-      final result = await dataSource.getByStatus(companyId: companyId, status: status);
+      final result = await dataSource.getByStatus(
+        companyId: companyId,
+        status: status,
+        cashRegisterId: cashRegisterId,
+      );
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ServiceOrderEntity>>> getCreatedInRegister(String cashRegisterId) async {
+    try {
+      final result = await dataSource.getCreatedInRegister(cashRegisterId);
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ServiceOrderEntity>>> getPaidInRegister(String cashRegisterId) async {
+    try {
+      final result = await dataSource.getPaidInRegister(cashRegisterId);
       return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

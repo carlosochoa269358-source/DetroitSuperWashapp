@@ -67,6 +67,16 @@ class CashRegisterRepositoryImpl implements CashRegisterRepository {
       );
       return const Right(null);
     } catch (e) {
+      return Left(ServerFailure(e.toString().replaceFirst('Exception: ', '')));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<CashRegisterEntity>>> getClosedHistory(String companyId) async {
+    try {
+      final result = await dataSource.getClosedHistory(companyId);
+      return Right(result);
+    } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
   }

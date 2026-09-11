@@ -12,16 +12,47 @@ class ServiceOrderDataSource {
     service_order_items(id, services(name))
   ''';
 
+  /// [cashRegisterId] escopa la consulta al turno actual: para 'new'/'finished'
+  /// se filtra por el turno en que se creó la orden; para 'paid', por el turno
+  /// en que terminó de pagarse (puede ser distinto si fue un fiado pagado
+  /// después). Si es null, no se filtra por turno (ej. para 'cancelled').
   Future<List<ServiceOrderModel>> getByStatus({
     required String companyId,
     required String status,
+    String? cashRegisterId,
   }) async {
-    final data = await _client
+    var query = _client
         .from('service_orders')
         .select(_selectWithJoins)
         .eq('company_id', companyId)
-        .eq('status', status)
+        .eq('status', status);
+    if (cashRegisterId != null) {
+      final column = status == 'paid' ? 'paid_cash_register_id' : 'cash_register_id';
+      query = query.eq(column, cashRegisterId);
+    }
+    final data = await query.order('created_at', ascending: false);
+    return (data as List).map((e) => ServiceOrderModel.fromJson(e)).toList();
+  }
+
+  /// Órdenes creadas durante un turno (sin importar su estado actual) — para
+  /// el historial de turnos: "qué se atendió durante este turno".
+  Future<List<ServiceOrderModel>> getCreatedInRegister(String cashRegisterId) async {
+    final data = await _client
+        .from('service_orders')
+        .select(_selectWithJoins)
+        .eq('cash_register_id', cashRegisterId)
         .order('created_at', ascending: false);
+    return (data as List).map((e) => ServiceOrderModel.fromJson(e)).toList();
+  }
+
+  /// Órdenes que terminaron de pagarse durante un turno (puede incluir fiados
+  /// de turnos anteriores) — para el historial de turnos: "qué se cobró".
+  Future<List<ServiceOrderModel>> getPaidInRegister(String cashRegisterId) async {
+    final data = await _client
+        .from('service_orders')
+        .select(_selectWithJoins)
+        .eq('paid_cash_register_id', cashRegisterId)
+        .order('paid_at', ascending: false);
     return (data as List).map((e) => ServiceOrderModel.fromJson(e)).toList();
   }
 

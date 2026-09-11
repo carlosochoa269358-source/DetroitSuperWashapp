@@ -18,4 +18,5 @@ abstract class CashRegisterRepository {
     required double countedAmount,
     String? differenceReason,
   });
+  Future<Either<Failure, List<CashRegisterEntity>>> getClosedHistory(String companyId);
 }

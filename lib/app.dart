@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'core/constants/app_constants.dart';
 import 'core/constants/app_routes.dart';
 import 'core/theme/app_theme.dart';
+import 'domain/entities/cash_register_entity.dart';
 import 'domain/entities/customer_entity.dart';
 import 'domain/entities/vehicle_entity.dart';
 import 'presentation/pages/auth/login_page.dart';
@@ -16,6 +17,8 @@ import 'presentation/pages/operacion/cliente_vehiculo_page.dart';
 import 'presentation/pages/operacion/orden_detalle_page.dart';
 import 'presentation/pages/operacion/seleccionar_servicio_page.dart';
 import 'presentation/pages/splash/splash_page.dart';
+import 'presentation/pages/turno/turno_historial_detalle_page.dart';
+import 'presentation/pages/turno/turno_historial_page.dart';
 import 'presentation/pages/turno/turno_page.dart';
 import 'presentation/pages/vehiculos/buscar_placa_page.dart';
 import 'presentation/pages/vehiculos/vehiculo_form_page.dart';
@@ -68,6 +71,14 @@ class DetroitApp extends ConsumerWidget {
         GoRoute(
           path: AppRoutes.turno,
           builder: (context, state) => const TurnoPage(),
+        ),
+        GoRoute(
+          path: AppRoutes.turnoHistorial,
+          builder: (context, state) => const TurnoHistorialPage(),
+        ),
+        GoRoute(
+          path: AppRoutes.turnoHistorialDetalle,
+          builder: (context, state) => TurnoHistorialDetallePage(register: state.extra as CashRegisterEntity),
         ),
         GoRoute(
           path: AppRoutes.dashboard,

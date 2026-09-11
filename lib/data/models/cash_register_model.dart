@@ -15,9 +15,13 @@ class CashRegisterModel extends CashRegisterEntity {
     required super.status,
     required super.openedAt,
     super.closedAt,
+    super.openedByName,
+    super.closedByName,
   });
 
   factory CashRegisterModel.fromJson(Map<String, dynamic> json) {
+    final openedByUser = json['opened_by_user'] as Map<String, dynamic>?;
+    final closedByUser = json['closed_by_user'] as Map<String, dynamic>?;
     return CashRegisterModel(
       id: json['id'] as String,
       companyId: json['company_id'] as String,
@@ -32,6 +36,8 @@ class CashRegisterModel extends CashRegisterEntity {
       status: json['status'] as String,
       openedAt: DateTime.parse(json['opened_at'] as String),
       closedAt: json['closed_at'] != null ? DateTime.parse(json['closed_at'] as String) : null,
+      openedByName: openedByUser?['full_name'] as String?,
+      closedByName: closedByUser?['full_name'] as String?,
     );
   }
 }

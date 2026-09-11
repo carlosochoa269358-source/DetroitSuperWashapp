@@ -76,6 +76,14 @@ class DashboardPage extends HookConsumerWidget {
                   context.push(AppRoutes.vehiculos);
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.history, color: AppColors.primary),
+                title: const Text('Historial de turnos'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  context.push(AppRoutes.turnoHistorial);
+                },
+              ),
               const Spacer(),
               const Divider(color: AppColors.divider),
               ListTile(

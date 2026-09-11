@@ -312,6 +312,7 @@ class _CerrarTurnoAnteriorView extends HookConsumerWidget {
                 (_) {
                   ref.invalidate(anyOpenCashRegisterProvider);
                   ref.invalidate(openCashRegisterTodayProvider);
+                  ref.invalidate(closedCashRegistersProvider);
                 },
               );
             },

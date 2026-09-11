@@ -3,6 +3,7 @@ class ServiceOrderEntity {
   final String companyId;
   final String orderNumber;
   final String cashRegisterId;
+  final String? paidCashRegisterId;
   final String customerId;
   final String vehicleId;
   final String createdBy;
@@ -29,6 +30,7 @@ class ServiceOrderEntity {
     required this.companyId,
     required this.orderNumber,
     required this.cashRegisterId,
+    this.paidCashRegisterId,
     required this.customerId,
     required this.vehicleId,
     required this.createdBy,

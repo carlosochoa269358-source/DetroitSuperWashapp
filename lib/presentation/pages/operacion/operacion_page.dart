@@ -132,6 +132,13 @@ class _OrderCard extends ConsumerWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (order.serviceNames.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    CurrencyFormatter.format(order.finalPrice),
+                    style: AppTextStyles.body1.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
+                  ),
+                ],
               ],
             ),
           ),
