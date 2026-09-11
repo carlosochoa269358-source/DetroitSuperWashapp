@@ -8,9 +8,11 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/validators.dart';
+import '../../../domain/entities/employee_pending_summary_entity.dart';
 import '../../../domain/entities/service_order_entity.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cash_register_provider.dart';
+import '../../providers/employee_settlement_provider.dart';
 import '../../providers/service_order_provider.dart';
 import '../../widgets/common/detroit_button.dart';
 import '../../widgets/common/detroit_card.dart';
@@ -26,6 +28,7 @@ class CajaTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final registerAsync = ref.watch(openCashRegisterTodayProvider);
+    final user = ref.watch(authProvider).value;
 
     return registerAsync.when(
       loading: () => const LoadingWidget(),
@@ -60,6 +63,10 @@ class CajaTab extends ConsumerWidget {
               _ServiciosResumenCard(cashRegisterId: register.id),
               const SizedBox(height: 16),
               _MetodosPagoCard(cashRegisterId: register.id),
+              if (user?.isAdminGeneral ?? false) ...[
+                const SizedBox(height: 16),
+                _LiquidacionCard(cashRegisterId: register.id),
+              ],
               const SizedBox(height: 24),
               DetroitButton(
                 text: 'CERRAR TURNO',
@@ -78,14 +85,16 @@ class _ResumenRow extends StatelessWidget {
   final String label;
   final String value;
   final bool isTotal;
+  final bool isNegative;
 
-  const _ResumenRow({required this.label, required this.value, this.isTotal = false});
+  const _ResumenRow({required this.label, required this.value, this.isTotal = false, this.isNegative = false});
 
   @override
   Widget build(BuildContext context) {
+    final color = isNegative ? AppColors.error : (isTotal ? AppColors.primary : null);
     final style = isTotal
-        ? AppTextStyles.body1.copyWith(fontWeight: FontWeight.w700, color: AppColors.primary)
-        : AppTextStyles.body2;
+        ? AppTextStyles.body1.copyWith(fontWeight: FontWeight.w700, color: color)
+        : AppTextStyles.body2.copyWith(color: color);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -202,6 +211,7 @@ class _MetodosPagoCard extends ConsumerWidget {
                 rows.add(_ResumenRow(
                   label: '${entry.value} (${totalForMethod.count})',
                   value: CurrencyFormatter.format(totalForMethod.total),
+                  isNegative: totalForMethod.total < 0,
                 ));
               }
               if (rows.isEmpty) {
@@ -212,8 +222,182 @@ class _MetodosPagoCard extends ConsumerWidget {
                 children: [
                   ...rows,
                   const Divider(color: AppColors.divider),
-                  _ResumenRow(label: 'Total', value: CurrencyFormatter.format(grandTotal), isTotal: true),
+                  _ResumenRow(
+                    label: 'Total',
+                    value: CurrencyFormatter.format(grandTotal),
+                    isTotal: true,
+                    isNegative: grandTotal < 0,
+                  ),
                 ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Comisión pendiente por trabajador (órdenes ya pagadas, sin liquidar) con
+/// un botón para liquidar todo de una vez, descontándolo del método de pago
+/// elegido en el turno actual.
+class _LiquidacionCard extends ConsumerWidget {
+  final String cashRegisterId;
+
+  const _LiquidacionCard({required this.cashRegisterId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pendingAsync = ref.watch(employeePendingSummaryProvider);
+
+    return DetroitCard(
+      accentColor: AppColors.primary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Liquidación de trabajadores', style: AppTextStyles.heading4),
+          const SizedBox(height: 8),
+          pendingAsync.when(
+            loading: () => const LoadingWidget(),
+            error: (error, stack) => Text('Error: $error', style: const TextStyle(color: AppColors.error)),
+            data: (pending) {
+              if (pending.isEmpty) {
+                return Text('No hay comisiones pendientes por liquidar.', style: AppTextStyles.body2);
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final employee in pending) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(employee.employeeName, style: AppTextStyles.body1),
+                                Text(
+                                  '${employee.pendingCount} servicio(s) — ${CurrencyFormatter.format(employee.pendingTotal)}',
+                                  style: AppTextStyles.caption,
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => _showLiquidarSheet(context, ref, cashRegisterId, employee),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: AppColors.background,
+                            ),
+                            child: const Text('Liquidar'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (employee != pending.last) const Divider(color: AppColors.divider),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+void _showLiquidarSheet(
+  BuildContext context,
+  WidgetRef ref,
+  String cashRegisterId,
+  EmployeePendingSummaryEntity employee,
+) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: AppColors.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    builder: (context) => _LiquidarSheet(cashRegisterId: cashRegisterId, employee: employee),
+  );
+}
+
+class _LiquidarSheet extends HookConsumerWidget {
+  final String cashRegisterId;
+  final EmployeePendingSummaryEntity employee;
+
+  const _LiquidarSheet({required this.cashRegisterId, required this.employee});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedMethod = useState<String>('efectivo');
+    final isSaving = useState(false);
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Liquidar a ${employee.employeeName}', style: AppTextStyles.heading3),
+          const SizedBox(height: 4),
+          Text('${employee.pendingCount} servicio(s) pendientes', style: AppTextStyles.body2),
+          const SizedBox(height: 16),
+          Text(
+            'Total a pagar: ${CurrencyFormatter.format(employee.pendingTotal)}',
+            style: AppTextStyles.heading4.copyWith(color: AppColors.primary),
+          ),
+          const SizedBox(height: 16),
+          Text('¿En qué método se le está pagando?', style: AppTextStyles.body2),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: paymentMethodLabels.entries.map((entry) {
+              return ChoiceChip(
+                label: Text(entry.value),
+                selected: selectedMethod.value == entry.key,
+                selectedColor: AppColors.primary.withValues(alpha: 0.3),
+                onSelected: (_) => selectedMethod.value = entry.key,
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Esto se descuenta del total de "${paymentMethodLabels[selectedMethod.value]}" en la caja de este turno — puede quedar en negativo si se liquida más de lo que ha entrado en ese método.',
+            style: AppTextStyles.caption,
+          ),
+          const SizedBox(height: 24),
+          DetroitButton(
+            text: 'CONFIRMAR LIQUIDACIÓN',
+            isLoading: isSaving.value,
+            onPressed: () async {
+              final user = ref.read(authProvider).value;
+              if (user == null) return;
+
+              isSaving.value = true;
+              final result = await ref.read(employeeSettlementRepositoryProvider).liquidateAllPending(
+                    companyId: user.companyId,
+                    employeeId: employee.employeeId,
+                    cashRegisterId: cashRegisterId,
+                    settledBy: user.id,
+                    commissionPct: employee.commissionPct,
+                    paymentMethod: selectedMethod.value,
+                  );
+              isSaving.value = false;
+              result.fold(
+                (failure) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(failure.message))),
+                (_) {
+                  ref.invalidate(employeePendingSummaryProvider);
+                  ref.invalidate(paymentMethodTotalsProvider(cashRegisterId));
+                  ref.invalidate(cashPaymentsTotalProvider(cashRegisterId));
+                  if (context.mounted) Navigator.of(context).pop();
+                },
               );
             },
           ),

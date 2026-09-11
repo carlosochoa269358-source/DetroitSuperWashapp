@@ -23,7 +23,8 @@ class CashRegisterDataSource {
   }
 
   /// Efectivo esperado en caja: pagos directos en efectivo + abonos de
-  /// fiados en efectivo registrados durante el turno.
+  /// fiados en efectivo, menos lo que ya se liquidó a trabajadores en
+  /// efectivo durante el turno.
   Future<double> cashPaymentsTotal(String cashRegisterId) async {
     final payments = await _client
         .from('payments')
@@ -36,15 +37,26 @@ class CashRegisterDataSource {
         .select('amount')
         .eq('cash_register_id', cashRegisterId)
         .eq('payment_method', 'efectivo');
+    final settlements = await _client
+        .from('employee_settlements')
+        .select('commission_paid')
+        .eq('cash_register_id', cashRegisterId)
+        .eq('payment_method', 'efectivo');
+
     double total = 0;
     for (final row in [...(payments as List), ...(abonos as List)]) {
       total += (row['amount'] as num).toDouble();
     }
+    for (final row in settlements as List) {
+      total -= (row['commission_paid'] as num).toDouble();
+    }
     return total;
   }
 
-  /// Desglose de dinero recibido en el turno por método de pago (pagos
-  /// directos + abonos de fiados), para la pestaña Caja.
+  /// Desglose de dinero por método de pago en el turno: lo recibido (pagos
+  /// directos + abonos de fiados) menos lo liquidado a trabajadores en ese
+  /// mismo método — puede quedar en negativo si se liquidó más de lo que
+  /// entró en ese método.
   Future<List<PaymentMethodTotal>> paymentMethodTotals(String cashRegisterId) async {
     final direct = await _client
         .from('payments')
@@ -55,6 +67,10 @@ class CashRegisterDataSource {
         .from('accounts_receivable_payments')
         .select('payment_method, amount')
         .eq('cash_register_id', cashRegisterId);
+    final settlements = await _client
+        .from('employee_settlements')
+        .select('payment_method, commission_paid')
+        .eq('cash_register_id', cashRegisterId);
 
     final totals = <String, double>{};
     final counts = <String, int>{};
@@ -63,6 +79,12 @@ class CashRegisterDataSource {
       final amount = (row['amount'] as num).toDouble();
       totals[method] = (totals[method] ?? 0) + amount;
       counts[method] = (counts[method] ?? 0) + 1;
+    }
+    for (final row in settlements as List) {
+      final method = row['payment_method'] as String? ?? 'efectivo';
+      final amount = (row['commission_paid'] as num).toDouble();
+      totals[method] = (totals[method] ?? 0) - amount;
+      counts.putIfAbsent(method, () => 0);
     }
     return totals.entries
         .map((e) => PaymentMethodTotal(method: e.key, count: counts[e.key]!, total: e.value))
