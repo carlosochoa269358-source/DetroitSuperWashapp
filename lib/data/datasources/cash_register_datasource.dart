@@ -41,7 +41,8 @@ class CashRegisterDataSource {
         .from('employee_settlements')
         .select('commission_paid')
         .eq('cash_register_id', cashRegisterId)
-        .eq('payment_method', 'efectivo');
+        .eq('payment_method', 'efectivo')
+        .eq('is_reversed', false);
 
     double total = 0;
     for (final row in [...(payments as List), ...(abonos as List)]) {

@@ -10,6 +10,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/validators.dart';
 import '../../../domain/entities/employee_pending_summary_entity.dart';
 import '../../../domain/entities/service_order_entity.dart';
+import '../../../domain/entities/turno_settlement_entity.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cash_register_provider.dart';
 import '../../providers/employee_settlement_provider.dart';
@@ -321,12 +322,7 @@ class _LiquidacionCard extends ConsumerWidget {
                   const Divider(color: AppColors.divider),
                   Text('Liquidado en este turno', style: AppTextStyles.body2.copyWith(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
-                  for (final s in settled)
-                    _ResumenRow(
-                      label: '${s.employeeName} (${paymentMethodLabels[s.paymentMethod] ?? s.paymentMethod})',
-                      value: '-${CurrencyFormatter.format(s.commissionPaid)}',
-                      isNegative: true,
-                    ),
+                  for (final s in settled) _SettledRow(cashRegisterId: cashRegisterId, settlement: s),
                 ],
               );
             },
@@ -335,6 +331,101 @@ class _LiquidacionCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _SettledRow extends ConsumerWidget {
+  final String cashRegisterId;
+  final TurnoSettlementEntity settlement;
+
+  const _SettledRow({required this.cashRegisterId, required this.settlement});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '${settlement.employeeName} (${paymentMethodLabels[settlement.paymentMethod] ?? settlement.paymentMethod})',
+              style: AppTextStyles.body2,
+            ),
+          ),
+          Text(
+            '-${CurrencyFormatter.format(settlement.commissionPaid)}',
+            style: AppTextStyles.body2.copyWith(color: AppColors.error),
+          ),
+          IconButton(
+            icon: const Icon(Icons.undo, color: AppColors.textMuted, size: 18),
+            tooltip: 'Reversar liquidación',
+            onPressed: () => _showReversarLiquidacionDialog(context, ref, cashRegisterId, settlement),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+void _showReversarLiquidacionDialog(
+  BuildContext context,
+  WidgetRef ref,
+  String cashRegisterId,
+  TurnoSettlementEntity settlement,
+) async {
+  final reasonController = TextEditingController();
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: const Text('Reversar liquidación'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Esto deja pendiente de nuevo la comisión de ${settlement.employeeName} '
+            '(${CurrencyFormatter.format(settlement.commissionPaid)}) para poder liquidarla otra vez.',
+            style: AppTextStyles.body2,
+          ),
+          const SizedBox(height: 16),
+          DetroitTextField(
+            controller: reasonController,
+            label: 'Motivo de la reversión',
+            validator: Validators.validateRequired,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+        TextButton(
+          onPressed: () {
+            if (reasonController.text.trim().isEmpty) return;
+            Navigator.pop(context, true);
+          },
+          child: const Text('REVERSAR', style: TextStyle(color: AppColors.error)),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  final user = ref.read(authProvider).value;
+  if (user == null) return;
+
+  final result = await ref.read(employeeSettlementRepositoryProvider).reverseSettlement(
+        settlementId: settlement.id,
+        reversedBy: user.id,
+        reason: reasonController.text.trim(),
+      );
+  result.fold(
+    (failure) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(failure.message))),
+    (_) {
+      ref.invalidate(employeePendingSummaryProvider);
+      ref.invalidate(turnoSettlementsProvider(cashRegisterId));
+      ref.invalidate(paymentMethodTotalsProvider(cashRegisterId));
+      ref.invalidate(cashPaymentsTotalProvider(cashRegisterId));
+    },
+  );
 }
 
 /// Resumen final del turno: lo bruto por método, lo liquidado a trabajadores

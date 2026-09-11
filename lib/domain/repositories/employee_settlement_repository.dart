@@ -6,6 +6,11 @@ import '../entities/turno_settlement_entity.dart';
 abstract class EmployeeSettlementRepository {
   Future<Either<Failure, List<EmployeePendingSummaryEntity>>> getPendingSummary();
   Future<Either<Failure, List<TurnoSettlementEntity>>> getSettlementsForRegister(String cashRegisterId);
+  Future<Either<Failure, void>> reverseSettlement({
+    required String settlementId,
+    required String reversedBy,
+    required String reason,
+  });
   Future<Either<Failure, void>> liquidateAllPending({
     required String companyId,
     required String employeeId,

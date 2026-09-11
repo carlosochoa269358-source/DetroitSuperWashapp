@@ -78,22 +78,45 @@ class EmployeeSettlementDataSource {
     return summaries;
   }
 
-  /// Liquidaciones ya pagadas durante este turno (para mostrarlas como
-  /// referencia, no solo restarlas silenciosamente).
+  /// Liquidaciones ya pagadas durante este turno, sin contar las reversadas
+  /// (para mostrarlas como referencia, no solo restarlas silenciosamente).
   Future<List<TurnoSettlementEntity>> getSettlementsForRegister(String cashRegisterId) async {
     final data = await _client
         .from('employee_settlements')
-        .select('payment_method, commission_paid, employees(full_name)')
+        .select('id, payment_method, commission_paid, employees(full_name)')
         .eq('cash_register_id', cashRegisterId)
+        .eq('is_reversed', false)
         .order('settled_at');
     return (data as List).map((row) {
       final employee = row['employees'] as Map<String, dynamic>?;
       return TurnoSettlementEntity(
+        id: row['id'] as String,
         employeeName: employee?['full_name'] as String? ?? '—',
         paymentMethod: row['payment_method'] as String? ?? 'efectivo',
         commissionPaid: (row['commission_paid'] as num).toDouble(),
       );
     }).toList();
+  }
+
+  /// Reversa una liquidación (nunca se borra, se marca reversada con
+  /// motivo) y libera las órdenes que cubría para que vuelvan a quedar
+  /// pendientes por liquidar.
+  Future<void> reverseSettlement({
+    required String settlementId,
+    required String reversedBy,
+    required String reason,
+  }) async {
+    await _client.from('employee_settlements').update({
+      'is_reversed': true,
+      'reversed_at': DateTime.now().toUtc().toIso8601String(),
+      'reversed_by': reversedBy,
+      'reverse_reason': reason,
+    }).eq('id', settlementId);
+
+    await _client
+        .from('service_order_workers')
+        .update({'is_settled': false, 'settlement_id': null})
+        .eq('settlement_id', settlementId);
   }
 
   /// Liquida TODO lo pendiente de un trabajador de una sola vez (no permite

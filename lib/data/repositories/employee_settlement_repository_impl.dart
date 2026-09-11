@@ -31,6 +31,20 @@ class EmployeeSettlementRepositoryImpl implements EmployeeSettlementRepository {
   }
 
   @override
+  Future<Either<Failure, void>> reverseSettlement({
+    required String settlementId,
+    required String reversedBy,
+    required String reason,
+  }) async {
+    try {
+      await dataSource.reverseSettlement(settlementId: settlementId, reversedBy: reversedBy, reason: reason);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString().replaceFirst('Exception: ', '')));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> liquidateAllPending({
     required String companyId,
     required String employeeId,
