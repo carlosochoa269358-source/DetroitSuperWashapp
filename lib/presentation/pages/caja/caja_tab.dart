@@ -256,6 +256,10 @@ class _LiquidacionCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Liquidación de trabajadores', style: AppTextStyles.heading4),
+          Text(
+            'Incluye comisión de servicios ya cobrados de cualquier turno, no solo el de hoy. Los fiados no cuentan aquí.',
+            style: AppTextStyles.caption,
+          ),
           const SizedBox(height: 8),
           pendingAsync.when(
             loading: () => const LoadingWidget(),

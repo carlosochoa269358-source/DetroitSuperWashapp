@@ -150,6 +150,26 @@ class CashRegisterDataSource {
     return (data as List).length;
   }
 
+  /// Cuenta comisiones de trabajadores sin liquidar sobre órdenes YA PAGADAS
+  /// que se crearon en este turno ("si se cierra un turno, se cierra todo").
+  /// Los fiados no cuentan aquí — nunca bloquean ni se liquidan.
+  Future<int> countUnsettledCommissions(String cashRegisterId) async {
+    final orderRows = await _client
+        .from('service_orders')
+        .select('id')
+        .eq('cash_register_id', cashRegisterId)
+        .eq('status', 'paid');
+    final orderIds = (orderRows as List).map((r) => r['id'] as String).toList();
+    if (orderIds.isEmpty) return 0;
+
+    final data = await _client
+        .from('service_order_workers')
+        .select('id')
+        .inFilter('service_order_id', orderIds)
+        .eq('is_settled', false);
+    return (data as List).length;
+  }
+
   Future<void> close({
     required String id,
     required String closedBy,
@@ -161,6 +181,13 @@ class CashRegisterDataSource {
     if (pending > 0) {
       throw Exception(
         'No se puede cerrar el turno: hay $pending orden(es) sin terminar o sin cobrar todavía.',
+      );
+    }
+
+    final pendingCommissions = await countUnsettledCommissions(id);
+    if (pendingCommissions > 0) {
+      throw Exception(
+        'No se puede cerrar el turno: hay $pendingCommissions comisión(es) de trabajadores sin liquidar todavía.',
       );
     }
 
