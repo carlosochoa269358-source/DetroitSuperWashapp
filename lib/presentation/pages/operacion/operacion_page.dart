@@ -142,9 +142,10 @@ class _OrderCard extends ConsumerWidget {
               ],
             ),
           ),
-          if (order.status == 'new') ...[
+          if (order.status != 'cancelled')
             IconButton(
               icon: const Icon(Icons.edit, color: AppColors.textMuted),
+              tooltip: order.status == 'new' ? 'Editar servicios' : 'Corregir / anular orden',
               onPressed: order.vehicleTypeId == null
                   ? null
                   : () => context.push(
@@ -152,6 +153,7 @@ class _OrderCard extends ConsumerWidget {
                         extra: order.vehicleTypeId,
                       ),
             ),
+          if (order.status == 'new')
             ElevatedButton(
               onPressed: () async {
                 await ref.read(serviceOrderRepositoryProvider).finalize(order.id);
@@ -160,8 +162,8 @@ class _OrderCard extends ConsumerWidget {
               },
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: AppColors.background),
               child: const Text('Finalizar'),
-            ),
-          ] else if (order.status == 'finished')
+            )
+          else if (order.status == 'finished')
             ElevatedButton(
               onPressed: () => showPagoModal(context, ref, order),
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white),

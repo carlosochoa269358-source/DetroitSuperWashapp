@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/validators.dart';
+import '../../providers/accounts_receivable_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/service_order_item_provider.dart';
 import '../../providers/service_order_provider.dart';
@@ -113,6 +114,9 @@ class OrdenDetallePage extends HookConsumerWidget {
         (failure) => errorMessage.value = failure.message,
         (_) {
           ref.invalidate(serviceOrdersByStatusProvider('new'));
+          ref.invalidate(serviceOrdersByStatusProvider('finished'));
+          ref.invalidate(serviceOrdersByStatusProvider('paid'));
+          ref.invalidate(openAccountsReceivableProvider);
           if (context.mounted) Navigator.of(context).pop();
         },
       );
@@ -147,7 +151,13 @@ class OrdenDetallePage extends HookConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order.vehiclePlate ?? '—', style: AppTextStyles.heading3),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(order.vehiclePlate ?? '—', style: AppTextStyles.heading3),
+                          if (!isEditable) Text(_statusLabel(order.status), style: AppTextStyles.caption),
+                        ],
+                      ),
                       Text(order.customerName ?? '—', style: AppTextStyles.body2),
                       if (order.workerName != null)
                         Text('Lavador: ${order.workerName}', style: AppTextStyles.caption),
@@ -240,7 +250,7 @@ class OrdenDetallePage extends HookConsumerWidget {
                     },
                   ),
                 ],
-                if (isEditable && (user?.isAdminGeneral ?? false)) ...[
+                if (order.status != 'cancelled' && (user?.isAdminGeneral ?? false)) ...[
                   const SizedBox(height: 12),
                   DetroitButton(
                     text: 'ANULAR ORDEN',
@@ -254,5 +264,20 @@ class OrdenDetallePage extends HookConsumerWidget {
         },
       ),
     );
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'finished':
+        return 'Finalizada';
+      case 'paid':
+        return 'Pagada';
+      case 'receivable':
+        return 'Por cobrar';
+      case 'cancelled':
+        return 'Anulada';
+      default:
+        return status;
+    }
   }
 }

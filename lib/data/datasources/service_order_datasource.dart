@@ -126,17 +126,40 @@ class ServiceOrderDataSource {
 
   /// Anula la orden en vez de borrarla (nunca se elimina información
   /// financiera, se anula con motivo — sección 20 del documento original).
+  /// Funciona en cualquier estado (para poder corregir una orden que ya se
+  /// pagó, ej. placa/cliente/método de pago equivocado): reversa los pagos
+  /// directos asociados (nunca se borran, se marca is_reversed) y, si había
+  /// un fiado abierto/parcial, lo marca cancelado.
   Future<void> cancel({
     required String orderId,
     required String cancelledBy,
     required String reason,
   }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+
     await _client.from('service_orders').update({
       'status': 'cancelled',
-      'cancelled_at': DateTime.now().toUtc().toIso8601String(),
+      'cancelled_at': now,
       'cancelled_by': cancelledBy,
       'cancel_reason': reason,
     }).eq('id', orderId);
+
+    await _client
+        .from('payments')
+        .update({
+          'is_reversed': true,
+          'reversed_at': now,
+          'reversed_by': cancelledBy,
+          'reverse_reason': reason,
+        })
+        .eq('service_order_id', orderId)
+        .eq('is_reversed', false);
+
+    await _client
+        .from('accounts_receivable')
+        .update({'status': 'cancelled'})
+        .eq('service_order_id', orderId)
+        .inFilter('status', ['open', 'partial']);
   }
 
   /// Registra el pago (total o parcial) de una orden finalizada. Si queda un saldo

@@ -1,6 +1,8 @@
 import 'package:dartz/dartz.dart';
 import '../../core/errors/failures.dart';
 import '../../domain/entities/cash_register_entity.dart';
+import '../../domain/entities/payment_method_total_entity.dart';
+import '../../domain/entities/services_summary_entity.dart';
 import '../../domain/repositories/cash_register_repository.dart';
 import '../datasources/cash_register_datasource.dart';
 
@@ -75,6 +77,26 @@ class CashRegisterRepositoryImpl implements CashRegisterRepository {
   Future<Either<Failure, List<CashRegisterEntity>>> getClosedHistory(String companyId) async {
     try {
       final result = await dataSource.getClosedHistory(companyId);
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<PaymentMethodTotal>>> paymentMethodTotals(String cashRegisterId) async {
+    try {
+      final result = await dataSource.paymentMethodTotals(cashRegisterId);
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ServicesSummaryEntity>> servicesSummary(String cashRegisterId) async {
+    try {
+      final result = await dataSource.servicesSummary(cashRegisterId);
       return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

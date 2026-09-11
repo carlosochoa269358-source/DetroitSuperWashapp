@@ -3,6 +3,8 @@ import '../../core/utils/date_formatter.dart';
 import '../../data/datasources/cash_register_datasource.dart';
 import '../../data/repositories/cash_register_repository_impl.dart';
 import '../../domain/entities/cash_register_entity.dart';
+import '../../domain/entities/payment_method_total_entity.dart';
+import '../../domain/entities/services_summary_entity.dart';
 import 'auth_provider.dart';
 
 part 'cash_register_provider.g.dart';
@@ -45,6 +47,22 @@ Future<double> cashPaymentsTotal(Ref ref, String cashRegisterId) async {
   final repo = ref.watch(cashRegisterRepositoryProvider);
   final result = await repo.cashPaymentsTotal(cashRegisterId);
   return result.fold((failure) => throw Exception(failure.message), (total) => total);
+}
+
+/// Desglose de dinero recibido en el turno por método de pago, para Caja.
+@riverpod
+Future<List<PaymentMethodTotal>> paymentMethodTotals(Ref ref, String cashRegisterId) async {
+  final repo = ref.watch(cashRegisterRepositoryProvider);
+  final result = await repo.paymentMethodTotals(cashRegisterId);
+  return result.fold((failure) => throw Exception(failure.message), (list) => list);
+}
+
+/// Cuántos servicios se hicieron en el turno y su valor sumado, para Caja.
+@riverpod
+Future<ServicesSummaryEntity> servicesSummary(Ref ref, String cashRegisterId) async {
+  final repo = ref.watch(cashRegisterRepositoryProvider);
+  final result = await repo.servicesSummary(cashRegisterId);
+  return result.fold((failure) => throw Exception(failure.message), (summary) => summary);
 }
 
 /// Turnos cerrados de la empresa, para la pantalla de historial.

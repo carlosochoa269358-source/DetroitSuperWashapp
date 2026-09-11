@@ -1,6 +1,8 @@
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/utils/date_formatter.dart';
+import '../../domain/entities/payment_method_total_entity.dart';
+import '../../domain/entities/services_summary_entity.dart';
 import '../models/cash_register_model.dart';
 
 class CashRegisterDataSource {
@@ -20,6 +22,8 @@ class CashRegisterDataSource {
     return CashRegisterModel.fromJson(data);
   }
 
+  /// Efectivo esperado en caja: pagos directos en efectivo + abonos de
+  /// fiados en efectivo registrados durante el turno.
   Future<double> cashPaymentsTotal(String cashRegisterId) async {
     final payments = await _client
         .from('payments')
@@ -27,11 +31,65 @@ class CashRegisterDataSource {
         .eq('cash_register_id', cashRegisterId)
         .eq('payment_method', 'efectivo')
         .eq('is_reversed', false);
+    final abonos = await _client
+        .from('accounts_receivable_payments')
+        .select('amount')
+        .eq('cash_register_id', cashRegisterId)
+        .eq('payment_method', 'efectivo');
     double total = 0;
-    for (final row in payments as List) {
+    for (final row in [...(payments as List), ...(abonos as List)]) {
       total += (row['amount'] as num).toDouble();
     }
     return total;
+  }
+
+  /// Desglose de dinero recibido en el turno por método de pago (pagos
+  /// directos + abonos de fiados), para la pestaña Caja.
+  Future<List<PaymentMethodTotal>> paymentMethodTotals(String cashRegisterId) async {
+    final direct = await _client
+        .from('payments')
+        .select('payment_method, amount')
+        .eq('cash_register_id', cashRegisterId)
+        .eq('is_reversed', false);
+    final abonos = await _client
+        .from('accounts_receivable_payments')
+        .select('payment_method, amount')
+        .eq('cash_register_id', cashRegisterId);
+
+    final totals = <String, double>{};
+    final counts = <String, int>{};
+    for (final row in [...(direct as List), ...(abonos as List)]) {
+      final method = row['payment_method'] as String;
+      final amount = (row['amount'] as num).toDouble();
+      totals[method] = (totals[method] ?? 0) + amount;
+      counts[method] = (counts[method] ?? 0) + 1;
+    }
+    return totals.entries
+        .map((e) => PaymentMethodTotal(method: e.key, count: counts[e.key]!, total: e.value))
+        .toList();
+  }
+
+  /// Cuántos servicios (líneas, no órdenes) se hicieron durante el turno y
+  /// su valor sumado. Excluye órdenes anuladas.
+  Future<ServicesSummaryEntity> servicesSummary(String cashRegisterId) async {
+    final orderRows = await _client
+        .from('service_orders')
+        .select('id')
+        .eq('cash_register_id', cashRegisterId)
+        .neq('status', 'cancelled');
+    final orderIds = (orderRows as List).map((r) => r['id'] as String).toList();
+    if (orderIds.isEmpty) return const ServicesSummaryEntity(count: 0, total: 0);
+
+    final items = await _client
+        .from('service_order_items')
+        .select('final_price')
+        .inFilter('service_order_id', orderIds);
+    final rows = items as List;
+    double total = 0;
+    for (final row in rows) {
+      total += (row['final_price'] as num).toDouble();
+    }
+    return ServicesSummaryEntity(count: rows.length, total: total);
   }
 
   Future<CashRegisterModel> open({

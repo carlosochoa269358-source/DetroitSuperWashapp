@@ -271,6 +271,179 @@ final class CashPaymentsTotalFamily extends $Family
   String toString() => r'cashPaymentsTotalProvider';
 }
 
+/// Desglose de dinero recibido en el turno por método de pago, para Caja.
+
+@ProviderFor(paymentMethodTotals)
+final paymentMethodTotalsProvider = PaymentMethodTotalsFamily._();
+
+/// Desglose de dinero recibido en el turno por método de pago, para Caja.
+
+final class PaymentMethodTotalsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<PaymentMethodTotal>>,
+          List<PaymentMethodTotal>,
+          FutureOr<List<PaymentMethodTotal>>
+        >
+    with
+        $FutureModifier<List<PaymentMethodTotal>>,
+        $FutureProvider<List<PaymentMethodTotal>> {
+  /// Desglose de dinero recibido en el turno por método de pago, para Caja.
+  PaymentMethodTotalsProvider._({
+    required PaymentMethodTotalsFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'paymentMethodTotalsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$paymentMethodTotalsHash();
+
+  @override
+  String toString() {
+    return r'paymentMethodTotalsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<PaymentMethodTotal>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<PaymentMethodTotal>> create(Ref ref) {
+    final argument = this.argument as String;
+    return paymentMethodTotals(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is PaymentMethodTotalsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$paymentMethodTotalsHash() =>
+    r'9a9f59fb54f43ee9a2a7607936fba06056c7fc96';
+
+/// Desglose de dinero recibido en el turno por método de pago, para Caja.
+
+final class PaymentMethodTotalsFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<PaymentMethodTotal>>, String> {
+  PaymentMethodTotalsFamily._()
+    : super(
+        retry: null,
+        name: r'paymentMethodTotalsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Desglose de dinero recibido en el turno por método de pago, para Caja.
+
+  PaymentMethodTotalsProvider call(String cashRegisterId) =>
+      PaymentMethodTotalsProvider._(argument: cashRegisterId, from: this);
+
+  @override
+  String toString() => r'paymentMethodTotalsProvider';
+}
+
+/// Cuántos servicios se hicieron en el turno y su valor sumado, para Caja.
+
+@ProviderFor(servicesSummary)
+final servicesSummaryProvider = ServicesSummaryFamily._();
+
+/// Cuántos servicios se hicieron en el turno y su valor sumado, para Caja.
+
+final class ServicesSummaryProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<ServicesSummaryEntity>,
+          ServicesSummaryEntity,
+          FutureOr<ServicesSummaryEntity>
+        >
+    with
+        $FutureModifier<ServicesSummaryEntity>,
+        $FutureProvider<ServicesSummaryEntity> {
+  /// Cuántos servicios se hicieron en el turno y su valor sumado, para Caja.
+  ServicesSummaryProvider._({
+    required ServicesSummaryFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'servicesSummaryProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$servicesSummaryHash();
+
+  @override
+  String toString() {
+    return r'servicesSummaryProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<ServicesSummaryEntity> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<ServicesSummaryEntity> create(Ref ref) {
+    final argument = this.argument as String;
+    return servicesSummary(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ServicesSummaryProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$servicesSummaryHash() => r'102b11938a2c57da360f335ece2a757305a40625';
+
+/// Cuántos servicios se hicieron en el turno y su valor sumado, para Caja.
+
+final class ServicesSummaryFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<ServicesSummaryEntity>, String> {
+  ServicesSummaryFamily._()
+    : super(
+        retry: null,
+        name: r'servicesSummaryProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Cuántos servicios se hicieron en el turno y su valor sumado, para Caja.
+
+  ServicesSummaryProvider call(String cashRegisterId) =>
+      ServicesSummaryProvider._(argument: cashRegisterId, from: this);
+
+  @override
+  String toString() => r'servicesSummaryProvider';
+}
+
 /// Turnos cerrados de la empresa, para la pantalla de historial.
 
 @ProviderFor(closedCashRegisters)

@@ -13,7 +13,7 @@ import '../../providers/service_order_provider.dart';
 import '../../widgets/common/detroit_button.dart';
 import '../../widgets/common/detroit_text_field.dart';
 
-const _paymentMethods = {
+const paymentMethodLabels = {
   'efectivo': 'Efectivo',
   'transferencia': 'Transferencia',
   'nequi': 'Nequi',
@@ -108,7 +108,7 @@ class _PagoSheet extends HookConsumerWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _paymentMethods.entries.map((entry) {
+            children: paymentMethodLabels.entries.map((entry) {
               return ChoiceChip(
                 label: Text(entry.value),
                 selected: selectedMethod.value == entry.key,
@@ -188,7 +188,7 @@ class _AbonoSheet extends HookConsumerWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _paymentMethods.entries.map((entry) {
+            children: paymentMethodLabels.entries.map((entry) {
               return ChoiceChip(
                 label: Text(entry.value),
                 selected: selectedMethod.value == entry.key,
