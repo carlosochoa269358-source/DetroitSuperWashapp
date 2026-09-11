@@ -70,13 +70,15 @@ class CashRegisterDataSource {
   }
 
   /// Cuántos servicios (líneas, no órdenes) se hicieron durante el turno y
-  /// su valor sumado. Excluye órdenes anuladas.
+  /// su valor sumado. Solo cuenta lo que efectivamente entra o va a entrar a
+  /// caja hoy: excluye anuladas y fiadas ('receivable') — lo fiado todavía
+  /// no es plata contable en el día.
   Future<ServicesSummaryEntity> servicesSummary(String cashRegisterId) async {
     final orderRows = await _client
         .from('service_orders')
         .select('id')
         .eq('cash_register_id', cashRegisterId)
-        .neq('status', 'cancelled');
+        .inFilter('status', ['new', 'finished', 'paid']);
     final orderIds = (orderRows as List).map((r) => r['id'] as String).toList();
     if (orderIds.isEmpty) return const ServicesSummaryEntity(count: 0, total: 0);
 
