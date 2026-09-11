@@ -53,10 +53,9 @@ class CashRegisterDataSource {
     return total;
   }
 
-  /// Desglose de dinero por método de pago en el turno: lo recibido (pagos
-  /// directos + abonos de fiados) menos lo liquidado a trabajadores en ese
-  /// mismo método — puede quedar en negativo si se liquidó más de lo que
-  /// entró en ese método.
+  /// Desglose de dinero BRUTO recibido por método de pago en el turno (pagos
+  /// directos + abonos de fiados) — sin descontar liquidaciones a
+  /// trabajadores todavía. Eso se muestra aparte, en el "Total general".
   Future<List<PaymentMethodTotal>> paymentMethodTotals(String cashRegisterId) async {
     final direct = await _client
         .from('payments')
@@ -67,10 +66,6 @@ class CashRegisterDataSource {
         .from('accounts_receivable_payments')
         .select('payment_method, amount')
         .eq('cash_register_id', cashRegisterId);
-    final settlements = await _client
-        .from('employee_settlements')
-        .select('payment_method, commission_paid')
-        .eq('cash_register_id', cashRegisterId);
 
     final totals = <String, double>{};
     final counts = <String, int>{};
@@ -79,12 +74,6 @@ class CashRegisterDataSource {
       final amount = (row['amount'] as num).toDouble();
       totals[method] = (totals[method] ?? 0) + amount;
       counts[method] = (counts[method] ?? 0) + 1;
-    }
-    for (final row in settlements as List) {
-      final method = row['payment_method'] as String? ?? 'efectivo';
-      final amount = (row['commission_paid'] as num).toDouble();
-      totals[method] = (totals[method] ?? 0) - amount;
-      counts.putIfAbsent(method, () => 0);
     }
     return totals.entries
         .map((e) => PaymentMethodTotal(method: e.key, count: counts[e.key]!, total: e.value))

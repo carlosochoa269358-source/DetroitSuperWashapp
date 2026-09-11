@@ -3,6 +3,7 @@ class EmployeePendingSummaryEntity {
   final String employeeName;
   final double commissionPct;
   final int pendingCount;
+  final double pendingSalesTotal;
   final double pendingTotal;
 
   const EmployeePendingSummaryEntity({
@@ -10,6 +11,7 @@ class EmployeePendingSummaryEntity {
     required this.employeeName,
     required this.commissionPct,
     required this.pendingCount,
+    required this.pendingSalesTotal,
     required this.pendingTotal,
   });
 }

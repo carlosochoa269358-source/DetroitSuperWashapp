@@ -67,6 +67,8 @@ class CajaTab extends ConsumerWidget {
                 const SizedBox(height: 16),
                 _LiquidacionCard(cashRegisterId: register.id),
               ],
+              const SizedBox(height: 16),
+              _TotalGeneralCard(cashRegisterId: register.id),
               const SizedBox(height: 24),
               DetroitButton(
                 text: 'CERRAR TURNO',
@@ -249,6 +251,7 @@ class _LiquidacionCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pendingAsync = ref.watch(employeePendingSummaryProvider);
+    final settledAsync = ref.watch(turnoSettlementsProvider(cashRegisterId));
 
     return DetroitCard(
       accentColor: AppColors.primary,
@@ -282,7 +285,8 @@ class _LiquidacionCard extends ConsumerWidget {
                               children: [
                                 Text(employee.employeeName, style: AppTextStyles.body1),
                                 Text(
-                                  '${employee.pendingCount} servicio(s) — ${CurrencyFormatter.format(employee.pendingTotal)}',
+                                  '${CurrencyFormatter.format(employee.pendingSalesTotal)} × ${employee.commissionPct.toStringAsFixed(0)}% '
+                                  '= ${CurrencyFormatter.format(employee.pendingTotal)}',
                                   style: AppTextStyles.caption,
                                 ),
                               ],
@@ -305,6 +309,112 @@ class _LiquidacionCard extends ConsumerWidget {
               );
             },
           ),
+          settledAsync.when(
+            loading: () => const SizedBox.shrink(),
+            error: (error, stack) => const SizedBox.shrink(),
+            data: (settled) {
+              if (settled.isEmpty) return const SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  const Divider(color: AppColors.divider),
+                  Text('Liquidado en este turno', style: AppTextStyles.body2.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  for (final s in settled)
+                    _ResumenRow(
+                      label: '${s.employeeName} (${paymentMethodLabels[s.paymentMethod] ?? s.paymentMethod})',
+                      value: '-${CurrencyFormatter.format(s.commissionPaid)}',
+                      isNegative: true,
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Resumen final del turno: lo bruto por método, lo liquidado a trabajadores
+/// (siempre en negativo, sin importar el método), y el neto por método.
+class _TotalGeneralCard extends ConsumerWidget {
+  final String cashRegisterId;
+
+  const _TotalGeneralCard({required this.cashRegisterId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final totalsAsync = ref.watch(paymentMethodTotalsProvider(cashRegisterId));
+    final settledAsync = ref.watch(turnoSettlementsProvider(cashRegisterId));
+
+    return DetroitCard(
+      accentColor: AppColors.primary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Total general', style: AppTextStyles.heading4),
+          const SizedBox(height: 8),
+          if (totalsAsync.isLoading || settledAsync.isLoading)
+            const LoadingWidget()
+          else if (totalsAsync.hasError)
+            Text('Error: ${totalsAsync.error}', style: const TextStyle(color: AppColors.error))
+          else if (settledAsync.hasError)
+            Text('Error: ${settledAsync.error}', style: const TextStyle(color: AppColors.error))
+          else
+            Builder(builder: (context) {
+              final bruto = <String, double>{
+                for (final t in totalsAsync.value!) t.method: t.total,
+              };
+              final liquidado = <String, double>{};
+              for (final s in settledAsync.value!) {
+                liquidado[s.paymentMethod] = (liquidado[s.paymentMethod] ?? 0) + s.commissionPaid;
+              }
+              final methods = {...bruto.keys, ...liquidado.keys}.toList()
+                ..sort((a, b) => paymentMethodLabels.keys.toList().indexOf(a).compareTo(
+                      paymentMethodLabels.keys.toList().indexOf(b),
+                    ));
+
+              final totalBruto = bruto.values.fold<double>(0, (sum, v) => sum + v);
+              final totalTrabajadores = liquidado.values.fold<double>(0, (sum, v) => sum + v);
+              final totalGeneral = totalBruto - totalTrabajadores;
+
+              if (methods.isEmpty) {
+                return Text('Todavía no hay movimientos en este turno.', style: AppTextStyles.body2);
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final method in methods)
+                    _ResumenRow(
+                      label: paymentMethodLabels[method] ?? method,
+                      value: CurrencyFormatter.format(bruto[method] ?? 0),
+                    ),
+                  if (totalTrabajadores > 0)
+                    _ResumenRow(
+                      label: 'Trabajadores',
+                      value: '-${CurrencyFormatter.format(totalTrabajadores)}',
+                      isNegative: true,
+                    ),
+                  const Divider(color: AppColors.divider),
+                  _ResumenRow(
+                    label: 'Total general',
+                    value: CurrencyFormatter.format(totalGeneral),
+                    isTotal: true,
+                    isNegative: totalGeneral < 0,
+                  ),
+                  const SizedBox(height: 12),
+                  for (final method in methods)
+                    _ResumenRow(
+                      label: 'Total en ${paymentMethodLabels[method] ?? method}',
+                      value: CurrencyFormatter.format((bruto[method] ?? 0) - (liquidado[method] ?? 0)),
+                      isNegative: (bruto[method] ?? 0) - (liquidado[method] ?? 0) < 0,
+                    ),
+                ],
+              );
+            }),
         ],
       ),
     );
@@ -373,7 +483,7 @@ class _LiquidarSheet extends HookConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Esto se descuenta del total de "${paymentMethodLabels[selectedMethod.value]}" en la caja de este turno — puede quedar en negativo si se liquida más de lo que ha entrado en ese método.',
+            'Esto se descuenta del "Total general" de este turno en "${paymentMethodLabels[selectedMethod.value]}" — puede quedar en negativo si se liquida más de lo que ha entrado en ese método.',
             style: AppTextStyles.caption,
           ),
           const SizedBox(height: 24),
@@ -398,6 +508,7 @@ class _LiquidarSheet extends HookConsumerWidget {
                 (failure) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(failure.message))),
                 (_) {
                   ref.invalidate(employeePendingSummaryProvider);
+                  ref.invalidate(turnoSettlementsProvider(cashRegisterId));
                   ref.invalidate(paymentMethodTotalsProvider(cashRegisterId));
                   ref.invalidate(cashPaymentsTotalProvider(cashRegisterId));
                   if (context.mounted) Navigator.of(context).pop();

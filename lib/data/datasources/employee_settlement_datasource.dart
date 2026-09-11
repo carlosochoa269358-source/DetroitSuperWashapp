@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/employee_pending_summary_entity.dart';
 import '../../domain/entities/pending_commission_entity.dart';
+import '../../domain/entities/turno_settlement_entity.dart';
 
 class EmployeeSettlementDataSource {
   final SupabaseClient _client = Supabase.instance.client;
@@ -47,6 +48,7 @@ class EmployeeSettlementDataSource {
   Future<List<EmployeePendingSummaryEntity>> getPendingSummary() async {
     final rows = await _unsettledPaidRows();
     final totals = <String, double>{};
+    final salesTotals = <String, double>{};
     final counts = <String, int>{};
     final names = <String, String>{};
     final pcts = <String, double>{};
@@ -54,7 +56,9 @@ class EmployeeSettlementDataSource {
     for (final row in rows) {
       final employeeId = row['employee_id'] as String;
       final employee = row['employees'] as Map<String, dynamic>;
+      final order = row['service_orders'] as Map<String, dynamic>;
       totals[employeeId] = (totals[employeeId] ?? 0) + (row['commission_amount'] as num).toDouble();
+      salesTotals[employeeId] = (salesTotals[employeeId] ?? 0) + (order['final_price'] as num).toDouble();
       counts[employeeId] = (counts[employeeId] ?? 0) + 1;
       names[employeeId] = employee['full_name'] as String;
       pcts[employeeId] = (employee['commission_pct'] as num).toDouble();
@@ -66,11 +70,30 @@ class EmployeeSettlementDataSource {
               employeeName: names[e.key]!,
               commissionPct: pcts[e.key]!,
               pendingCount: counts[e.key]!,
+              pendingSalesTotal: salesTotals[e.key]!,
               pendingTotal: e.value,
             ))
         .toList();
     summaries.sort((a, b) => b.pendingTotal.compareTo(a.pendingTotal));
     return summaries;
+  }
+
+  /// Liquidaciones ya pagadas durante este turno (para mostrarlas como
+  /// referencia, no solo restarlas silenciosamente).
+  Future<List<TurnoSettlementEntity>> getSettlementsForRegister(String cashRegisterId) async {
+    final data = await _client
+        .from('employee_settlements')
+        .select('payment_method, commission_paid, employees(full_name)')
+        .eq('cash_register_id', cashRegisterId)
+        .order('settled_at');
+    return (data as List).map((row) {
+      final employee = row['employees'] as Map<String, dynamic>?;
+      return TurnoSettlementEntity(
+        employeeName: employee?['full_name'] as String? ?? '—',
+        paymentMethod: row['payment_method'] as String? ?? 'efectivo',
+        commissionPaid: (row['commission_paid'] as num).toDouble(),
+      );
+    }).toList();
   }
 
   /// Liquida TODO lo pendiente de un trabajador de una sola vez (no permite

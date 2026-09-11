@@ -158,3 +158,98 @@ final class EmployeePendingSummaryProvider
 
 String _$employeePendingSummaryHash() =>
     r'75c372bbbd20dbb6f73632c9057bb33ff6130a57';
+
+/// Liquidaciones ya pagadas durante un turno (para mostrarlas en Caja, no
+/// solo restarlas silenciosamente).
+
+@ProviderFor(turnoSettlements)
+final turnoSettlementsProvider = TurnoSettlementsFamily._();
+
+/// Liquidaciones ya pagadas durante un turno (para mostrarlas en Caja, no
+/// solo restarlas silenciosamente).
+
+final class TurnoSettlementsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<TurnoSettlementEntity>>,
+          List<TurnoSettlementEntity>,
+          FutureOr<List<TurnoSettlementEntity>>
+        >
+    with
+        $FutureModifier<List<TurnoSettlementEntity>>,
+        $FutureProvider<List<TurnoSettlementEntity>> {
+  /// Liquidaciones ya pagadas durante un turno (para mostrarlas en Caja, no
+  /// solo restarlas silenciosamente).
+  TurnoSettlementsProvider._({
+    required TurnoSettlementsFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'turnoSettlementsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$turnoSettlementsHash();
+
+  @override
+  String toString() {
+    return r'turnoSettlementsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<TurnoSettlementEntity>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<TurnoSettlementEntity>> create(Ref ref) {
+    final argument = this.argument as String;
+    return turnoSettlements(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TurnoSettlementsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$turnoSettlementsHash() => r'e537e759f20a5c56baa099230bd659934517d5ce';
+
+/// Liquidaciones ya pagadas durante un turno (para mostrarlas en Caja, no
+/// solo restarlas silenciosamente).
+
+final class TurnoSettlementsFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<TurnoSettlementEntity>>,
+          String
+        > {
+  TurnoSettlementsFamily._()
+    : super(
+        retry: null,
+        name: r'turnoSettlementsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Liquidaciones ya pagadas durante un turno (para mostrarlas en Caja, no
+  /// solo restarlas silenciosamente).
+
+  TurnoSettlementsProvider call(String cashRegisterId) =>
+      TurnoSettlementsProvider._(argument: cashRegisterId, from: this);
+
+  @override
+  String toString() => r'turnoSettlementsProvider';
+}
