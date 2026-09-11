@@ -12,4 +12,10 @@ abstract class ServiceOrderItemRepository {
     required double commissionPct,
   });
   Future<Either<Failure, void>> delete(String itemId);
+  Future<Either<Failure, ServiceOrderItemEntity>> updatePrice({
+    required String itemId,
+    required double basePrice,
+    required double commissionPct,
+    required double newFinalPrice,
+  });
 }

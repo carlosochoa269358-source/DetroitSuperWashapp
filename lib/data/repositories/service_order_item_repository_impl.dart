@@ -50,4 +50,24 @@ class ServiceOrderItemRepositoryImpl implements ServiceOrderItemRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, ServiceOrderItemEntity>> updatePrice({
+    required String itemId,
+    required double basePrice,
+    required double commissionPct,
+    required double newFinalPrice,
+  }) async {
+    try {
+      final result = await dataSource.updatePrice(
+        itemId: itemId,
+        basePrice: basePrice,
+        commissionPct: commissionPct,
+        newFinalPrice: newFinalPrice,
+      );
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

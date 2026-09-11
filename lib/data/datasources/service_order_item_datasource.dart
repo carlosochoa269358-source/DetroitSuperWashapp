@@ -44,4 +44,28 @@ class ServiceOrderItemDataSource {
   Future<void> delete(String itemId) async {
     await _client.from('service_order_items').delete().eq('id', itemId);
   }
+
+  /// Cambia el precio a cobrar de un servicio ya agregado (ej. se negoció
+  /// un descuento con el cliente). [basePrice]/[commissionPct] son los del
+  /// ítem tal cual están, solo cambia [newFinalPrice].
+  Future<ServiceOrderItemModel> updatePrice({
+    required String itemId,
+    required double basePrice,
+    required double commissionPct,
+    required double newFinalPrice,
+  }) async {
+    final discountAmount = basePrice - newFinalPrice;
+    final commissionAmount = newFinalPrice * commissionPct / 100;
+    final data = await _client
+        .from('service_order_items')
+        .update({
+          'discount_amount': discountAmount,
+          'final_price': newFinalPrice,
+          'commission_amount': commissionAmount,
+        })
+        .eq('id', itemId)
+        .select(_selectWithService)
+        .single();
+    return ServiceOrderItemModel.fromJson(data);
+  }
 }

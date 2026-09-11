@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/validators.dart';
+import '../../../domain/entities/service_order_item_entity.dart';
 import '../../providers/accounts_receivable_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/service_order_item_provider.dart';
@@ -48,6 +49,51 @@ class OrdenDetallePage extends HookConsumerWidget {
         (_) {
           showAddService.value = false;
           newSelection.value = null;
+          ref.invalidate(serviceOrderItemsProvider(orderId));
+          ref.invalidate(serviceOrderByIdProvider(orderId));
+          ref.invalidate(serviceOrdersByStatusProvider('new'));
+        },
+      );
+    }
+
+    Future<void> editarPrecio(ServiceOrderItemEntity item) async {
+      final priceController = TextEditingController(text: item.finalPrice.toStringAsFixed(0));
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: Text('Editar precio — ${item.serviceName ?? ''}'),
+          content: DetroitTextField(
+            controller: priceController,
+            label: 'Precio a cobrar',
+            keyboardType: TextInputType.number,
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('GUARDAR'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !context.mounted) return;
+
+      final newPrice = double.tryParse(priceController.text.replaceAll(RegExp(r'[^0-9]'), ''));
+      if (newPrice == null || newPrice <= 0) {
+        errorMessage.value = 'El precio debe ser mayor a cero.';
+        return;
+      }
+
+      final result = await ref.read(serviceOrderItemRepositoryProvider).updatePrice(
+            itemId: item.id,
+            basePrice: item.basePrice,
+            commissionPct: item.commissionPct,
+            newFinalPrice: newPrice,
+          );
+      result.fold(
+        (failure) => errorMessage.value = failure.message,
+        (_) {
           ref.invalidate(serviceOrderItemsProvider(orderId));
           ref.invalidate(serviceOrderByIdProvider(orderId));
           ref.invalidate(serviceOrdersByStatusProvider('new'));
@@ -182,7 +228,11 @@ class OrdenDetallePage extends HookConsumerWidget {
                                     ),
                                     Text(CurrencyFormatter.format(item.finalPrice), style: AppTextStyles.body1),
                                     if (isEditable) ...[
-                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        icon: const Icon(Icons.edit_outlined, color: AppColors.textMuted),
+                                        tooltip: 'Editar precio',
+                                        onPressed: () => editarPrecio(item),
+                                      ),
                                       IconButton(
                                         icon: const Icon(Icons.delete_outline, color: AppColors.error),
                                         onPressed: () => quitarServicio(item.id),
