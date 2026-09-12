@@ -26,12 +26,12 @@ class ConfiguracionPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).value;
 
-    if (user == null || !user.isAdminGeneral) {
+    if (user == null || !(user.isAdminGeneral || user.isAdminPunto)) {
       return Scaffold(
         appBar: const DetroitAppBar(title: 'Configuración'),
         body: Center(
           child: Text(
-            'Solo el Administrador General puede acceder a la configuración.',
+            'Solo un administrador puede acceder a la configuración.',
             textAlign: TextAlign.center,
             style: AppTextStyles.body1,
           ),
@@ -39,33 +39,36 @@ class ConfiguracionPage extends ConsumerWidget {
       );
     }
 
+    final tabs = [
+      const Tab(text: 'Categorías'),
+      const Tab(text: 'Servicios'),
+      const Tab(text: 'Tipos de vehículo'),
+      const Tab(text: 'Trabajadores'),
+      if (user.isAdminGeneral) const Tab(text: 'Usuarios'),
+    ];
+    final tabViews = [
+      const _ServiceCategoriesTab(),
+      const _ServicesTab(),
+      const _VehicleTypesTab(),
+      const _EmployeesTab(),
+      if (user.isAdminGeneral) const _UsersTab(),
+    ];
+
     return DefaultTabController(
-      length: 5,
+      length: tabs.length,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Configuración'),
-          bottom: const TabBar(
+          bottom: TabBar(
             isScrollable: true,
             indicatorColor: AppColors.primary,
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textMuted,
-            tabs: [
-              Tab(text: 'Categorías'),
-              Tab(text: 'Servicios'),
-              Tab(text: 'Tipos de vehículo'),
-              Tab(text: 'Trabajadores'),
-              Tab(text: 'Usuarios'),
-            ],
+            tabs: tabs,
           ),
         ),
-        body: const TabBarView(
-          children: [
-            _ServiceCategoriesTab(),
-            _ServicesTab(),
-            _VehicleTypesTab(),
-            _EmployeesTab(),
-            _UsersTab(),
-          ],
+        body: TabBarView(
+          children: tabViews,
         ),
       ),
     );

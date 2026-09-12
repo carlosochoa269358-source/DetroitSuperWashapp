@@ -67,11 +67,11 @@ class CajaTab extends ConsumerWidget {
               _ServiciosResumenCard(cashRegisterId: register.id),
               const SizedBox(height: 16),
               _MetodosPagoCard(cashRegisterId: register.id),
-              if (user?.isAdminGeneral ?? false) ...[
+              if ((user?.isAdminGeneral ?? false) || (user?.isAdminPunto ?? false)) ...[
                 const SizedBox(height: 16),
                 _LiquidacionCard(cashRegisterId: register.id),
               ],
-              if ((user?.isAdminGeneral ?? false) || (user?.isAdminPunto ?? false)) ...[
+              if (user?.isAdminGeneral ?? false) ...[
                 const SizedBox(height: 16),
                 _GastosCard(cashRegisterId: register.id),
               ],
@@ -348,6 +348,7 @@ class _SettledRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider).value;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -362,11 +363,12 @@ class _SettledRow extends ConsumerWidget {
             '-${CurrencyFormatter.format(settlement.commissionPaid)}',
             style: AppTextStyles.body2.copyWith(color: AppColors.error),
           ),
-          IconButton(
-            icon: const Icon(Icons.undo, color: AppColors.textMuted, size: 18),
-            tooltip: 'Reversar liquidación',
-            onPressed: () => _showReversarLiquidacionDialog(context, ref, cashRegisterId, settlement),
-          ),
+          if (user?.isAdminGeneral ?? false)
+            IconButton(
+              icon: const Icon(Icons.undo, color: AppColors.textMuted, size: 18),
+              tooltip: 'Reversar liquidación',
+              onPressed: () => _showReversarLiquidacionDialog(context, ref, cashRegisterId, settlement),
+            ),
         ],
       ),
     );
