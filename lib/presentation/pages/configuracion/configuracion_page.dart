@@ -12,6 +12,7 @@ import '../../../domain/entities/vehicle_type_entity.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_provider.dart';
 import '../../providers/employee_provider.dart';
+import '../../providers/user_management_provider.dart';
 import '../../widgets/common/detroit_app_bar.dart';
 import '../../widgets/common/detroit_button.dart';
 import '../../widgets/common/detroit_card.dart';
@@ -39,7 +40,7 @@ class ConfiguracionPage extends ConsumerWidget {
     }
 
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Configuración'),
@@ -53,6 +54,7 @@ class ConfiguracionPage extends ConsumerWidget {
               Tab(text: 'Servicios'),
               Tab(text: 'Tipos de vehículo'),
               Tab(text: 'Trabajadores'),
+              Tab(text: 'Usuarios'),
             ],
           ),
         ),
@@ -62,6 +64,7 @@ class ConfiguracionPage extends ConsumerWidget {
             _ServicesTab(),
             _VehicleTypesTab(),
             _EmployeesTab(),
+            _UsersTab(),
           ],
         ),
       ),
@@ -792,6 +795,211 @@ class _EmployeeFormDialog extends HookConsumerWidget {
                   .showSnackBar(SnackBar(content: Text(failure.message))),
               (_) {
                 ref.invalidate(employeesProvider);
+                if (context.mounted) Navigator.pop(context);
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _UsersTab extends ConsumerWidget {
+  const _UsersTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final usersAsync = ref.watch(companyUsersProvider);
+    final currentUser = ref.watch(authProvider).value;
+
+    return Scaffold(
+      body: usersAsync.when(
+        loading: () => const LoadingWidget(),
+        error: (error, stack) => Center(child: Text('Error: $error')),
+        data: (users) => users.isEmpty
+            ? Center(child: Text('No hay usuarios creados', style: AppTextStyles.body2))
+            : ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: users.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final user = users[index];
+                  final isSelf = user.id == currentUser?.id;
+                  return DetroitCard(
+                    accentColor: user.isActive ? AppColors.success : AppColors.textDisabled,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(user.fullName, style: AppTextStyles.heading4),
+                              if (user.email != null) Text(user.email!, style: AppTextStyles.body2),
+                              Text(_roleLabel(user.roleName), style: AppTextStyles.caption),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: user.isActive,
+                          activeThumbColor: AppColors.primary,
+                          onChanged: isSelf
+                              ? null
+                              : (value) async {
+                                  await ref
+                                      .read(userManagementRepositoryProvider)
+                                      .toggleActive(id: user.id, isActive: value);
+                                  ref.invalidate(companyUsersProvider);
+                                },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showCreateUserDialog(context, ref),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
+        icon: const Icon(Icons.person_add),
+        label: const Text('Nuevo usuario'),
+      ),
+    );
+  }
+
+  String _roleLabel(String roleName) {
+    switch (roleName) {
+      case 'admin_general':
+        return 'Admin general';
+      case 'admin_punto':
+        return 'Admin de punto';
+      case 'operador':
+        return 'Operador';
+      default:
+        return roleName;
+    }
+  }
+}
+
+void _showCreateUserDialog(BuildContext context, WidgetRef ref) {
+  showDialog(
+    context: context,
+    builder: (context) => const _CreateUserDialog(),
+  );
+}
+
+class _CreateUserDialog extends HookConsumerWidget {
+  const _CreateUserDialog();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formKey = useMemoized(() => GlobalKey<FormState>());
+    final nameController = useTextEditingController();
+    final emailController = useTextEditingController();
+    final phoneController = useTextEditingController();
+    final passwordController = useTextEditingController();
+    final selectedRoleId = useState<String?>(null);
+    final isSaving = useState(false);
+    final errorMessage = useState<String?>(null);
+    final rolesAsync = ref.watch(availableRolesProvider);
+
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: const Text('Nuevo usuario'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (errorMessage.value != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.error),
+                  ),
+                  child: Text(errorMessage.value!, style: const TextStyle(color: AppColors.error)),
+                ),
+                const SizedBox(height: 16),
+              ],
+              DetroitTextField(
+                controller: nameController,
+                label: 'Nombre completo',
+                uppercase: true,
+                validator: Validators.validateRequired,
+              ),
+              const SizedBox(height: 16),
+              DetroitTextField(
+                controller: emailController,
+                label: 'Correo electrónico',
+                keyboardType: TextInputType.emailAddress,
+                validator: Validators.validateEmail,
+              ),
+              const SizedBox(height: 16),
+              DetroitTextField(
+                controller: phoneController,
+                label: 'Teléfono (opcional)',
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 16),
+              DetroitTextField(
+                controller: passwordController,
+                label: 'Contraseña inicial',
+                isPassword: true,
+                validator: (value) {
+                  if (value == null || value.length < 6) {
+                    return 'Mínimo 6 caracteres';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              rolesAsync.when(
+                loading: () => const LoadingWidget(),
+                error: (error, stack) => Text('Error: $error'),
+                data: (roles) => DropdownButtonFormField<String>(
+                  initialValue: selectedRoleId.value,
+                  decoration: const InputDecoration(labelText: 'Rol'),
+                  dropdownColor: AppColors.surface2,
+                  items: roles.map((r) => DropdownMenuItem(value: r.id, child: Text(r.label))).toList(),
+                  onChanged: (value) => selectedRoleId.value = value,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        DetroitButton(
+          text: 'CREAR',
+          fullWidth: false,
+          isLoading: isSaving.value,
+          onPressed: () async {
+            errorMessage.value = null;
+            if (!formKey.currentState!.validate()) return;
+            if (selectedRoleId.value == null) {
+              errorMessage.value = 'Selecciona un rol.';
+              return;
+            }
+
+            isSaving.value = true;
+            final result = await ref.read(userManagementRepositoryProvider).createUser(
+                  companyId: ref.read(authProvider).value!.companyId,
+                  roleId: selectedRoleId.value!,
+                  fullName: nameController.text.trim(),
+                  email: emailController.text.trim(),
+                  password: passwordController.text,
+                  phone: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
+                );
+            isSaving.value = false;
+            result.fold(
+              (failure) => errorMessage.value = failure.message,
+              (_) {
+                ref.invalidate(companyUsersProvider);
                 if (context.mounted) Navigator.pop(context);
               },
             );
