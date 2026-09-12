@@ -11,6 +11,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/cash_register_provider.dart';
 import '../caja/caja_tab.dart';
 import '../operacion/operacion_page.dart';
+import '../reportes/reportes_page.dart';
 
 class DashboardPage extends HookConsumerWidget {
   const DashboardPage({super.key});
@@ -100,7 +101,7 @@ class DashboardPage extends HookConsumerWidget {
         children: const [
           OperacionPage(),
           CajaTab(),
-          _ReportesPlaceholder(),
+          ReportesTab(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -130,14 +131,5 @@ class DashboardPage extends HookConsumerWidget {
             )
           : null,
     );
-  }
-}
-
-class _ReportesPlaceholder extends StatelessWidget {
-  const _ReportesPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text('Próximamente', style: AppTextStyles.body1));
   }
 }
