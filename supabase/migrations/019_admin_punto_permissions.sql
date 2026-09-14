@@ -24,6 +24,7 @@ CREATE POLICY "expenses_update" ON expenses FOR UPDATE USING (
 --    lógica que "cualquiera opera, solo el dueño corrige".
 -- =============================================
 DROP POLICY IF EXISTS "employee_settlements_insert_ag" ON employee_settlements;
+DROP POLICY IF EXISTS "employee_settlements_insert" ON employee_settlements;
 
 CREATE POLICY "employee_settlements_insert" ON employee_settlements FOR INSERT WITH CHECK (
   company_id = get_user_company_id() AND (is_admin_general() OR is_admin_punto())
