@@ -29,7 +29,7 @@ Future<List<ServiceOrderEntity>> serviceOrdersByStatus(Ref ref, String status) a
 
   String? cashRegisterId;
   if (_scopedByTurnoStatuses.contains(status)) {
-    final register = await ref.watch(openCashRegisterTodayProvider.future);
+    final register = await ref.watch(anyOpenCashRegisterProvider.future);
     if (register == null) return [];
     cashRegisterId = register.id;
   }

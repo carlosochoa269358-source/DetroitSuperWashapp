@@ -20,7 +20,7 @@ class DashboardPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tabIndex = useState(0);
     final user = ref.watch(authProvider).value;
-    final registerAsync = ref.watch(openCashRegisterTodayProvider);
+    final registerAsync = ref.watch(anyOpenCashRegisterProvider);
 
     return Scaffold(
       appBar: AppBar(

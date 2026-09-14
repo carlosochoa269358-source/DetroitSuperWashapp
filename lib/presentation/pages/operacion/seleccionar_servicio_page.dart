@@ -38,7 +38,7 @@ class SeleccionarServicioPage extends HookConsumerWidget {
     Future<void> registrar() async {
       errorMessage.value = null;
       final user = ref.read(authProvider).value;
-      final register = ref.read(openCashRegisterTodayProvider).value;
+      final register = ref.read(anyOpenCashRegisterProvider).value;
 
       if (selection.value == null) {
         errorMessage.value = 'Selecciona un servicio y un precio válido.';

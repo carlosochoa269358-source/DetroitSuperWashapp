@@ -48,7 +48,7 @@ class _PagoSheet extends HookConsumerWidget {
 
     Future<void> settle({required bool isFiar}) async {
       final user = ref.read(authProvider).value;
-      final register = ref.read(openCashRegisterTodayProvider).value;
+      final register = ref.read(anyOpenCashRegisterProvider).value;
       if (user == null || register == null) return;
 
       final amountPaid = isFiar
@@ -203,7 +203,7 @@ class _AbonoSheet extends HookConsumerWidget {
             isLoading: isSaving.value,
             onPressed: () async {
               final user = ref.read(authProvider).value;
-              final register = ref.read(openCashRegisterTodayProvider).value;
+              final register = ref.read(anyOpenCashRegisterProvider).value;
               if (user == null || register == null) return;
               final amount = double.tryParse(amountController.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
               if (amount <= 0) return;

@@ -31,7 +31,13 @@ class DetroitApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateChangesProvider);
-    final turnoAsync = ref.watch(openCashRegisterTodayProvider);
+    // Se usa el turno abierto (sin importar el día en que se abrió) para
+    // decidir si se puede entrar al resto de la app. Si solo se mirara el
+    // turno de HOY, un turno viejo sin cerrar dejaba al usuario sin salida:
+    // la app lo mandaba a "/turno" a cerrarlo, pero cerrarlo requiere
+    // resolver órdenes pendientes desde Operación — a la que no se podía
+    // llegar porque la propia redirección lo devolvía a "/turno".
+    final turnoAsync = ref.watch(anyOpenCashRegisterProvider);
 
     final router = GoRouter(
       initialLocation: AppRoutes.splash,
@@ -52,9 +58,9 @@ class DetroitApp extends ConsumerWidget {
         }
 
         if (isAuth && !turnoAsync.isLoading) {
-          final hasTurnoToday = turnoAsync.value != null;
-          if (!hasTurnoToday && !isTurno) return AppRoutes.turno;
-          if (hasTurnoToday && isTurno) return AppRoutes.dashboard;
+          final hasOpenTurno = turnoAsync.value != null;
+          if (!hasOpenTurno && !isTurno) return AppRoutes.turno;
+          if (hasOpenTurno && isTurno) return AppRoutes.dashboard;
         }
 
         return null;

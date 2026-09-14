@@ -31,7 +31,7 @@ class CajaTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final registerAsync = ref.watch(openCashRegisterTodayProvider);
+    final registerAsync = ref.watch(anyOpenCashRegisterProvider);
     final user = ref.watch(authProvider).value;
 
     return registerAsync.when(
