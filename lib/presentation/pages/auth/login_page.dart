@@ -63,7 +63,7 @@ class LoginPage extends HookConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Image.asset('assets/images/logo.png', width: 190),
+                        Image.asset('assets/images/logo_banner.jpg', width: 190),
                         const SizedBox(height: 8),
                         Text(
                           'Tu vehículo, nuestra pasión',

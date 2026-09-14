@@ -53,7 +53,7 @@ class DashboardPage extends HookConsumerWidget {
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
                   children: [
-                    Image.asset('assets/images/logo.png', width: 120),
+                    Image.asset('assets/images/logo_banner.jpg', width: 120),
                     const SizedBox(height: 12),
                     Text(user?.fullName ?? '', style: AppTextStyles.heading4),
                     Text(DateFormatter.formatDate(DateFormatter.todayBogota()), style: AppTextStyles.caption),

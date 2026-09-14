@@ -101,7 +101,7 @@ class _AbrirTurnoView extends HookConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Image.asset('assets/images/logo.png', width: 160),
+          Image.asset('assets/images/logo_banner.jpg', width: 160),
           const SizedBox(height: 24),
           Text('Abrir turno', style: AppTextStyles.heading2, textAlign: TextAlign.center),
           const SizedBox(height: 8),

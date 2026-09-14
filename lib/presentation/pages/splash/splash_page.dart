@@ -30,7 +30,7 @@ class SplashPage extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('assets/images/logo.png', width: 240),
+            Image.asset('assets/images/logo_banner.jpg', width: 240),
             const SizedBox(height: 32),
             const CircularProgressIndicator(color: AppColors.primary),
           ],
