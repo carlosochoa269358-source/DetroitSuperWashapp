@@ -40,6 +40,13 @@ class VehicleDataSource {
     return (data as List).map((e) => VehicleModel.fromJson(e)).toList();
   }
 
+  /// Todos los vehículos de la empresa (para exportar clientes con sus
+  /// placas asociadas).
+  Future<List<VehicleModel>> getAllByCompany(String companyId) async {
+    final data = await _client.from('vehicles').select().eq('company_id', companyId).order('plate');
+    return (data as List).map((e) => VehicleModel.fromJson(e)).toList();
+  }
+
   Future<VehicleModel> create({
     required String companyId,
     required String customerId,

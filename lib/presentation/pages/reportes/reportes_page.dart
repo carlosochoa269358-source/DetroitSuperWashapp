@@ -5,6 +5,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/excel_export.dart';
+import '../../../domain/entities/profit_report_entity.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/reports_provider.dart';
 import '../../widgets/common/detroit_card.dart';
@@ -115,6 +117,16 @@ class ReportesTab extends HookConsumerWidget {
             data: (report) => Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                ElevatedButton.icon(
+                  onPressed: () => _downloadReportExcel(report: report, fromDate: fromDate, toDate: toDate),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1D6F42),
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.grid_on),
+                  label: const Text('DESCARGAR EXCEL'),
+                ),
+                const SizedBox(height: 16),
                 DetroitCard(
                   accentColor: AppColors.primary,
                   child: Column(
@@ -185,6 +197,46 @@ class ReportesTab extends HookConsumerWidget {
       ),
     );
   }
+}
+
+void _downloadReportExcel({
+  required ProfitReportEntity report,
+  required DateTime fromDate,
+  required DateTime toDate,
+}) {
+  final periodLabel = '${DateFormatter.formatDate(fromDate)} a ${DateFormatter.formatDate(toDate)}';
+
+  final resumen = <List<Object?>>[
+    ['Reporte Detroit Súper Wash'],
+    ['Período', periodLabel],
+    [],
+    ['Concepto', 'Valor'],
+    ['Ventas totales', report.totalSales],
+    ['Comisiones pagadas', -report.totalCommissions],
+    ['Gastos', -report.totalExpenses],
+    ['Utilidad neta', report.netProfit],
+  ];
+
+  final ventasPorMetodo = <List<Object?>>[
+    ['Método de pago', 'Cantidad', 'Total'],
+    for (final entry in report.salesByMethod)
+      [paymentMethodLabels[entry.method] ?? entry.method, entry.count, entry.total],
+  ];
+
+  final gastosPorCategoria = <List<Object?>>[
+    ['Categoría', 'Total'],
+    for (final entry in report.expensesByCategory) [entry.categoryName, entry.amount],
+  ];
+
+  downloadExcel(
+    fileName: 'Reporte_Detroit_${DateFormatter.formatDate(fromDate)}_a_${DateFormatter.formatDate(toDate)}.xlsx'
+        .replaceAll('/', '-'),
+    sheets: {
+      'Resumen': resumen,
+      'Ventas por método': ventasPorMetodo,
+      'Gastos por categoría': gastosPorCategoria,
+    },
+  );
 }
 
 class _ReportRow extends StatelessWidget {

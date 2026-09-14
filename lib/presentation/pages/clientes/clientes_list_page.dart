@@ -6,7 +6,11 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/debounce_hook.dart';
+import '../../../core/utils/excel_export.dart';
+import '../../../domain/entities/customer_entity.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/customer_provider.dart';
+import '../../providers/vehicle_provider.dart';
 import '../../widgets/common/detroit_card.dart';
 import '../../widgets/common/loading_widget.dart';
 
@@ -23,9 +27,48 @@ class ClientesListPage extends HookConsumerWidget {
     });
 
     final customersAsync = ref.watch(customerSearchProvider(query.value));
+    final isExporting = useState(false);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Clientes')),
+      appBar: AppBar(
+        title: const Text('Clientes'),
+        actions: [
+          IconButton(
+            icon: isExporting.value
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                  )
+                : const Icon(Icons.grid_on),
+            tooltip: 'Descargar Excel',
+            onPressed: isExporting.value || customersAsync.value == null
+                ? null
+                : () async {
+                    final companyId = ref.read(authProvider).value?.companyId;
+                    if (companyId == null) return;
+                    isExporting.value = true;
+                    final vehiclesResult = await ref.read(vehicleRepositoryProvider).getAllByCompany(companyId);
+                    isExporting.value = false;
+                    vehiclesResult.fold(
+                      (failure) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(content: Text('No se pudo exportar: ${failure.message}')));
+                        }
+                      },
+                      (vehicles) {
+                        final platesByCustomer = <String, List<String>>{};
+                        for (final v in vehicles) {
+                          platesByCustomer.putIfAbsent(v.customerId, () => []).add(v.plate);
+                        }
+                        _downloadClientesExcel(customersAsync.value ?? [], platesByCustomer);
+                      },
+                    );
+                  },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
@@ -102,4 +145,23 @@ class ClientesListPage extends HookConsumerWidget {
       ),
     );
   }
+}
+
+void _downloadClientesExcel(List<CustomerEntity> customers, Map<String, List<String>> platesByCustomer) {
+  final rows = <List<Object?>>[
+    ['Nombre', 'Teléfono', 'Placas', 'Visitas', 'Total gastado'],
+    for (final c in customers)
+      [
+        c.fullName,
+        c.phone,
+        (platesByCustomer[c.id] ?? const []).join(', '),
+        c.visitCount,
+        c.totalSpent,
+      ],
+  ];
+
+  downloadExcel(
+    fileName: 'Clientes_Detroit.xlsx',
+    sheets: {'Clientes': rows},
+  );
 }

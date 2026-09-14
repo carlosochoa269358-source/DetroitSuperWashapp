@@ -6,6 +6,7 @@ abstract class VehicleRepository {
   Future<Either<Failure, List<VehicleEntity>>> getByCustomer(String customerId);
   Future<Either<Failure, VehicleEntity?>> getByPlate({required String companyId, required String plate});
   Future<Either<Failure, List<VehicleEntity>>> searchByPlate({required String companyId, required String query});
+  Future<Either<Failure, List<VehicleEntity>>> getAllByCompany(String companyId);
   Future<Either<Failure, VehicleEntity>> create({
     required String companyId,
     required String customerId,
