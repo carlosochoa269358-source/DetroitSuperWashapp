@@ -79,6 +79,49 @@ class VehiculoFormPage extends HookConsumerWidget {
       );
     }
 
+    Future<void> deleteVehicle() async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.surface2,
+          title: const Text('¿Eliminar placa?'),
+          content: Text(
+            'Se eliminará la placa ${vehicle!.plate}. Si corrige un error de digitación y no tiene servicios registrados, se borra por completo; si ya tiene historial, solo se ocultará.',
+          ),
+          actions: [
+            TextButton(onPressed: () => context.pop(false), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () => context.pop(true),
+              child: const Text('Eliminar', style: TextStyle(color: AppColors.error)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !context.mounted) return;
+
+      isSaving.value = true;
+      final result = await ref.read(vehicleRepositoryProvider).delete(vehicle!.id);
+      isSaving.value = false;
+      if (!context.mounted) return;
+
+      ref.invalidate(vehiclesByCustomerProvider(customerId));
+      result.fold(
+        (failure) => errorMessage.value = failure.message,
+        (hardDeleted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                hardDeleted
+                    ? 'Placa eliminada'
+                    : 'Esta placa tiene historial de servicios: se ocultó en lugar de borrarse',
+              ),
+            ),
+          );
+          context.pop();
+        },
+      );
+    }
+
     return Scaffold(
       appBar: DetroitAppBar(title: isEditing ? 'Editar vehículo' : 'Nuevo vehículo'),
       body: SingleChildScrollView(
@@ -145,6 +188,14 @@ class VehiculoFormPage extends HookConsumerWidget {
                 isLoading: isSaving.value,
                 onPressed: save,
               ),
+              if (isEditing) ...[
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: isSaving.value ? null : deleteVehicle,
+                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  label: const Text('Eliminar placa', style: TextStyle(color: AppColors.error)),
+                ),
+              ],
             ],
           ),
         ),

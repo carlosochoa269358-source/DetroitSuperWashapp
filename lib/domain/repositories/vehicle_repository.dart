@@ -29,4 +29,9 @@ abstract class VehicleRepository {
     String? notes,
   });
   Future<Either<Failure, void>> toggleActive({required String id, required bool isActive});
+
+  /// Elimina la placa. Devuelve `Right(true)` si se borró de verdad, o
+  /// `Right(false)` si en vez de eso se desactivó porque ya tenía historial
+  /// de servicios asociado (no se puede borrar sin perder ese historial).
+  Future<Either<Failure, bool>> delete(String id);
 }

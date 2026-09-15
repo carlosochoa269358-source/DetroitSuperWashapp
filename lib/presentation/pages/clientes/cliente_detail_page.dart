@@ -16,6 +16,45 @@ class ClienteDetailPage extends ConsumerWidget {
 
   const ClienteDetailPage({super.key, required this.customerId});
 
+  Future<void> _confirmDeleteVehicle(BuildContext context, WidgetRef ref, String vehicleId, String plate) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface2,
+        title: const Text('¿Eliminar placa?'),
+        content: Text(
+          'Se eliminará la placa $plate de este cliente. Si corrige un error de digitación y no tiene servicios registrados, se borra por completo; si ya tiene historial, solo se ocultará.',
+        ),
+        actions: [
+          TextButton(onPressed: () => context.pop(false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => context.pop(true),
+            child: const Text('Eliminar', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final result = await ref.read(vehicleRepositoryProvider).delete(vehicleId);
+    if (!context.mounted) return;
+    ref.invalidate(vehiclesByCustomerProvider(customerId));
+    result.fold(
+      (failure) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${failure.message}'), backgroundColor: AppColors.error),
+      ),
+      (hardDeleted) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            hardDeleted
+                ? 'Placa $plate eliminada'
+                : 'Placa $plate tiene historial de servicios: se ocultó en lugar de borrarse',
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final customerAsync = ref.watch(customerByIdProvider(customerId));
@@ -122,6 +161,11 @@ class ClienteDetailPage extends ConsumerWidget {
                                               ),
                                             ],
                                           ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                                          tooltip: 'Eliminar placa',
+                                          onPressed: () => _confirmDeleteVehicle(context, ref, vehicle.id, vehicle.plate),
                                         ),
                                         const Icon(Icons.chevron_right, color: AppColors.textMuted),
                                       ],

@@ -9,6 +9,7 @@ class VehicleDataSource {
         .from('vehicles')
         .select()
         .eq('customer_id', customerId)
+        .eq('is_active', true)
         .order('created_at', ascending: false);
     return (data as List).map((e) => VehicleModel.fromJson(e)).toList();
   }
@@ -20,6 +21,7 @@ class VehicleDataSource {
         .select()
         .eq('company_id', companyId)
         .eq('plate', cleanPlate)
+        .eq('is_active', true)
         .maybeSingle();
     if (data == null) return null;
     return VehicleModel.fromJson(data);
@@ -34,16 +36,22 @@ class VehicleDataSource {
         .from('vehicles')
         .select()
         .eq('company_id', companyId)
+        .eq('is_active', true)
         .ilike('plate', '%$q%')
         .order('plate')
         .limit(50);
     return (data as List).map((e) => VehicleModel.fromJson(e)).toList();
   }
 
-  /// Todos los vehículos de la empresa (para exportar clientes con sus
-  /// placas asociadas).
+  /// Todos los vehículos activos de la empresa (para exportar clientes con
+  /// sus placas asociadas).
   Future<List<VehicleModel>> getAllByCompany(String companyId) async {
-    final data = await _client.from('vehicles').select().eq('company_id', companyId).order('plate');
+    final data = await _client
+        .from('vehicles')
+        .select()
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('plate');
     return (data as List).map((e) => VehicleModel.fromJson(e)).toList();
   }
 
@@ -105,5 +113,13 @@ class VehicleDataSource {
 
   Future<void> toggleActive({required String id, required bool isActive}) async {
     await _client.from('vehicles').update({'is_active': isActive}).eq('id', id);
+  }
+
+  /// Borra la placa de verdad (para corregir errores de digitación). Si el
+  /// vehículo ya tiene órdenes de servicio asociadas, Postgres rechaza el
+  /// borrado (23503, restricción de llave foránea) y el repositorio debe
+  /// resolverlo desactivándola en su lugar.
+  Future<void> delete(String id) async {
+    await _client.from('vehicles').delete().eq('id', id);
   }
 }

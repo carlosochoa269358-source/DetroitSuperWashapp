@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/errors/failures.dart';
 import '../../domain/entities/vehicle_entity.dart';
 import '../../domain/repositories/vehicle_repository.dart';
@@ -112,6 +113,26 @@ class VehicleRepositoryImpl implements VehicleRepository {
     try {
       await dataSource.toggleActive(id: id, isActive: isActive);
       return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> delete(String id) async {
+    try {
+      await dataSource.delete(id);
+      return const Right(true);
+    } on PostgrestException catch (e) {
+      if (e.code == '23503') {
+        try {
+          await dataSource.toggleActive(id: id, isActive: false);
+          return const Right(false);
+        } catch (e2) {
+          return Left(ServerFailure(e2.toString()));
+        }
+      }
+      return Left(ServerFailure(e.toString()));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
