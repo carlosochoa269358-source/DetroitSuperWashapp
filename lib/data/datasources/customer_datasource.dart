@@ -8,12 +8,9 @@ class CustomerDataSource {
 
   Future<List<CustomerModel>> search({required String companyId, String? query}) async {
     if (query == null || query.trim().isEmpty) {
-      final data = await _client
-          .from('customers')
-          .select()
-          .eq('company_id', companyId)
-          .order('full_name')
-          .limit(50);
+      // Sin filtro: se trae TODA la lista (para verla completa y para que
+      // el Excel exporte a todos, no solo una muestra).
+      final data = await _client.from('customers').select().eq('company_id', companyId).order('full_name');
       return (data as List).map((e) => CustomerModel.fromJson(e)).toList();
     }
 
