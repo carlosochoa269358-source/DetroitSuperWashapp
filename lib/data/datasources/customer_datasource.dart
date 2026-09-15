@@ -6,12 +6,28 @@ class CustomerDataSource {
 
   String _sanitize(String q) => q.replaceAll(RegExp(r'[,()]'), '').trim();
 
+  static final RegExp _onlyDigits = RegExp(r'^[0-9]+$');
+
+  /// Alfabético, pero deja al final los clientes cuyo "nombre" en realidad
+  /// es un número de celular (quedaron así al migrar de X2 sin nombre).
+  List<CustomerModel> _sortNamesFirst(List<CustomerModel> customers) {
+    final sorted = [...customers];
+    sorted.sort((a, b) {
+      final aIsPhone = _onlyDigits.hasMatch(a.fullName.trim());
+      final bIsPhone = _onlyDigits.hasMatch(b.fullName.trim());
+      if (aIsPhone != bIsPhone) return aIsPhone ? 1 : -1;
+      return a.fullName.toUpperCase().compareTo(b.fullName.toUpperCase());
+    });
+    return sorted;
+  }
+
   Future<List<CustomerModel>> search({required String companyId, String? query}) async {
     if (query == null || query.trim().isEmpty) {
       // Sin filtro: se trae TODA la lista (para verla completa y para que
       // el Excel exporte a todos, no solo una muestra).
-      final data = await _client.from('customers').select().eq('company_id', companyId).order('full_name');
-      return (data as List).map((e) => CustomerModel.fromJson(e)).toList();
+      final data = await _client.from('customers').select().eq('company_id', companyId);
+      final customers = (data as List).map((e) => CustomerModel.fromJson(e)).toList();
+      return _sortNamesFirst(customers);
     }
 
     final q = _sanitize(query);
@@ -24,7 +40,6 @@ class CustomerDataSource {
         .select()
         .eq('company_id', companyId)
         .or('full_name.ilike.%$q%,phone.ilike.%$q%')
-        .order('full_name')
         .limit(50);
     for (final row in byNameOrPhone as List) {
       final c = CustomerModel.fromJson(row);
@@ -51,7 +66,7 @@ class CustomerDataSource {
       }
     }
 
-    return results.values.toList();
+    return _sortNamesFirst(results.values.toList());
   }
 
   /// Busca un cliente por celular EXACTO (no parcial) — para detectar, antes
