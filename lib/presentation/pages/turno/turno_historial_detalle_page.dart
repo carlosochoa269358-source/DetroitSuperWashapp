@@ -6,10 +6,13 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../domain/entities/cash_register_entity.dart';
 import '../../../domain/entities/service_order_entity.dart';
+import '../../providers/cash_register_provider.dart';
+import '../../providers/employee_settlement_provider.dart';
 import '../../providers/service_order_provider.dart';
 import '../../widgets/common/detroit_app_bar.dart';
 import '../../widgets/common/detroit_card.dart';
 import '../../widgets/common/loading_widget.dart';
+import '../operacion/pago_modal.dart' show paymentMethodLabels;
 
 class TurnoHistorialDetallePage extends ConsumerWidget {
   final CashRegisterEntity register;
@@ -28,6 +31,9 @@ class TurnoHistorialDetallePage extends ConsumerWidget {
         body: Column(
           children: [
             _TurnoSummaryCard(register: register),
+            _ServiciosResumenCard(cashRegisterId: register.id),
+            _ComisionTotalCard(cashRegisterId: register.id),
+            _MetodosPagoCard(cashRegisterId: register.id),
             const TabBar(
               indicatorColor: AppColors.primary,
               labelColor: AppColors.primary,
@@ -119,6 +125,163 @@ class _TurnoSummaryCard extends StatelessWidget {
               if (register.differenceReason != null)
                 Text(register.differenceReason!, style: AppTextStyles.caption),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ResumenRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isTotal;
+
+  const _ResumenRow({required this.label, required this.value, this.isTotal = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final style = isTotal
+        ? AppTextStyles.body1.copyWith(fontWeight: FontWeight.w700, color: AppColors.primary)
+        : AppTextStyles.body2;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: style),
+          Text(value, style: style),
+        ],
+      ),
+    );
+  }
+}
+
+/// Cantidad y valor total de los servicios atendidos en este turno.
+class _ServiciosResumenCard extends ConsumerWidget {
+  final String cashRegisterId;
+
+  const _ServiciosResumenCard({required this.cashRegisterId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summaryAsync = ref.watch(servicesSummaryProvider(cashRegisterId));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: DetroitCard(
+        accentColor: AppColors.primary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Servicios', style: AppTextStyles.heading4),
+            const SizedBox(height: 8),
+            summaryAsync.when(
+              loading: () => const LoadingWidget(),
+              error: (error, stack) => Text('Error: $error', style: const TextStyle(color: AppColors.error)),
+              data: (summary) => _ResumenRow(
+                label: '${summary.count} servicio(s)',
+                value: CurrencyFormatter.format(summary.total),
+                isTotal: true,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Total de comisión liquidada (pagada a trabajadores) durante este turno.
+class _ComisionTotalCard extends ConsumerWidget {
+  final String cashRegisterId;
+
+  const _ComisionTotalCard({required this.cashRegisterId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settledAsync = ref.watch(turnoSettlementsProvider(cashRegisterId));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: DetroitCard(
+        accentColor: AppColors.primary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Comisión liquidada en este turno', style: AppTextStyles.heading4),
+            const SizedBox(height: 8),
+            settledAsync.when(
+              loading: () => const LoadingWidget(),
+              error: (error, stack) => Text('Error: $error', style: const TextStyle(color: AppColors.error)),
+              data: (settlements) {
+                final total = settlements.fold<double>(0, (sum, s) => sum + s.commissionPaid);
+                return _ResumenRow(
+                  label: 'Total',
+                  value: CurrencyFormatter.format(total),
+                  isTotal: true,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Desglose de lo cobrado en este turno por método de pago.
+class _MetodosPagoCard extends ConsumerWidget {
+  final String cashRegisterId;
+
+  const _MetodosPagoCard({required this.cashRegisterId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final totalsAsync = ref.watch(paymentMethodTotalsProvider(cashRegisterId));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: DetroitCard(
+        accentColor: AppColors.primary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Métodos de pago', style: AppTextStyles.heading4),
+            const SizedBox(height: 8),
+            totalsAsync.when(
+              loading: () => const LoadingWidget(),
+              error: (error, stack) => Text('Error: $error', style: const TextStyle(color: AppColors.error)),
+              data: (totals) {
+                if (totals.isEmpty) {
+                  return Text('No se cobró nada durante este turno.', style: AppTextStyles.body2);
+                }
+                final byMethod = {for (final t in totals) t.method: t};
+                double grandTotal = 0;
+                final rows = <Widget>[];
+                for (final entry in paymentMethodLabels.entries) {
+                  final totalForMethod = byMethod[entry.key];
+                  if (totalForMethod == null) continue;
+                  grandTotal += totalForMethod.total;
+                  rows.add(_ResumenRow(
+                    label: '${entry.value} (${totalForMethod.count})',
+                    value: CurrencyFormatter.format(totalForMethod.total),
+                  ));
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ...rows,
+                    const Divider(color: AppColors.divider),
+                    _ResumenRow(
+                      label: 'Total',
+                      value: CurrencyFormatter.format(grandTotal),
+                      isTotal: true,
+                    ),
+                  ],
+                );
+              },
+            ),
           ],
         ),
       ),
