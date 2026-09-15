@@ -3,11 +3,15 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_routes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/utils/debounce_hook.dart';
 import '../../../core/utils/validators.dart';
+import '../../../domain/entities/customer_entity.dart';
 import '../../../domain/entities/vehicle_entity.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_provider.dart';
+import '../../providers/customer_provider.dart';
 import '../../providers/vehicle_provider.dart';
 import '../../widgets/common/detroit_app_bar.dart';
 import '../../widgets/common/detroit_button.dart';
@@ -122,6 +126,55 @@ class VehiculoFormPage extends HookConsumerWidget {
       );
     }
 
+    Future<void> transferVehicle() async {
+      final newCustomer = await showModalBottomSheet<CustomerEntity>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: AppColors.surface2,
+        builder: (context) => _CustomerPickerSheet(excludeCustomerId: customerId),
+      );
+      if (newCustomer == null || !context.mounted) return;
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.surface2,
+          title: const Text('¿Transferir placa?'),
+          content: Text(
+            'La placa ${vehicle!.plate} pasará a pertenecer a ${newCustomer.fullName}. El historial de servicios de esta placa no se pierde.',
+          ),
+          actions: [
+            TextButton(onPressed: () => context.pop(false), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () => context.pop(true),
+              child: const Text('Transferir', style: TextStyle(color: AppColors.primary)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !context.mounted) return;
+
+      isSaving.value = true;
+      final result = await ref.read(vehicleRepositoryProvider).transferToCustomer(
+            vehicleId: vehicle!.id,
+            newCustomerId: newCustomer.id,
+          );
+      isSaving.value = false;
+      if (!context.mounted) return;
+
+      result.fold(
+        (failure) => errorMessage.value = failure.message,
+        (_) {
+          ref.invalidate(vehiclesByCustomerProvider(customerId));
+          ref.invalidate(vehiclesByCustomerProvider(newCustomer.id));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Placa transferida a ${newCustomer.fullName}')),
+          );
+          context.go(AppRoutes.clienteDetalleFor(newCustomer.id));
+        },
+      );
+    }
+
     return Scaffold(
       appBar: DetroitAppBar(title: isEditing ? 'Editar vehículo' : 'Nuevo vehículo'),
       body: SingleChildScrollView(
@@ -191,6 +244,12 @@ class VehiculoFormPage extends HookConsumerWidget {
               if (isEditing) ...[
                 const SizedBox(height: 12),
                 TextButton.icon(
+                  onPressed: isSaving.value ? null : transferVehicle,
+                  icon: const Icon(Icons.swap_horiz, color: AppColors.primary),
+                  label: const Text('Transferir a otro cliente', style: TextStyle(color: AppColors.primary)),
+                ),
+                const SizedBox(height: 4),
+                TextButton.icon(
                   onPressed: isSaving.value ? null : deleteVehicle,
                   icon: const Icon(Icons.delete_outline, color: AppColors.error),
                   label: const Text('Eliminar placa', style: TextStyle(color: AppColors.error)),
@@ -200,6 +259,92 @@ class VehiculoFormPage extends HookConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Hoja para buscar y elegir el nuevo dueño de una placa (traspaso de
+/// vehículo). Devuelve el cliente elegido, o null si se cancela.
+class _CustomerPickerSheet extends HookConsumerWidget {
+  final String excludeCustomerId;
+
+  const _CustomerPickerSheet({required this.excludeCustomerId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final searchController = useTextEditingController();
+    final query = useState<String?>(null);
+    useDebouncedTextListener(searchController, (text) {
+      query.value = text.trim().isEmpty ? null : text.trim();
+    });
+
+    final customersAsync = ref.watch(customerSearchProvider(query.value));
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (context, scrollController) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Transferir a otro cliente', style: AppTextStyles.heading4),
+              const SizedBox(height: 12),
+              TextField(
+                controller: searchController,
+                autofocus: true,
+                style: const TextStyle(color: AppColors.onBackground),
+                decoration: InputDecoration(
+                  hintText: 'Buscar por nombre, teléfono o placa',
+                  prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: customersAsync.when(
+                  loading: () => const LoadingWidget(),
+                  error: (error, stack) => Text('Error: $error', style: const TextStyle(color: AppColors.error)),
+                  data: (customers) {
+                    final filtered = customers.where((c) => c.id != excludeCustomerId).toList();
+                    if (filtered.isEmpty) {
+                      return Text('No se encontraron clientes', style: AppTextStyles.body2);
+                    }
+                    return ListView.separated(
+                      controller: scrollController,
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final c = filtered[index];
+                        return Material(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          child: ListTile(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            title: Text(c.fullName, style: AppTextStyles.body1),
+                            subtitle: Text(c.phone, style: AppTextStyles.body2),
+                            onTap: () => context.pop(c),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

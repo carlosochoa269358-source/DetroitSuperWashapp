@@ -25,7 +25,7 @@ class CustomerDataSource {
     if (query == null || query.trim().isEmpty) {
       // Sin filtro: se trae TODA la lista (para verla completa y para que
       // el Excel exporte a todos, no solo una muestra).
-      final data = await _client.from('customers').select().eq('company_id', companyId);
+      final data = await _client.from('customers').select().eq('company_id', companyId).eq('is_active', true);
       final customers = (data as List).map((e) => CustomerModel.fromJson(e)).toList();
       return _sortNamesFirst(customers);
     }
@@ -39,6 +39,7 @@ class CustomerDataSource {
         .from('customers')
         .select()
         .eq('company_id', companyId)
+        .eq('is_active', true)
         .or('full_name.ilike.%$q%,phone.ilike.%$q%')
         .limit(50);
     for (final row in byNameOrPhone as List) {
@@ -59,6 +60,7 @@ class CustomerDataSource {
           .from('customers')
           .select()
           .eq('company_id', companyId)
+          .eq('is_active', true)
           .inFilter('id', customerIdsFromPlate.toList());
       for (final row in byPlate as List) {
         final c = CustomerModel.fromJson(row);
@@ -132,5 +134,16 @@ class CustomerDataSource {
 
   Future<void> toggleActive({required String id, required bool isActive}) async {
     await _client.from('customers').update({'is_active': isActive}).eq('id', id);
+  }
+
+  /// Borra el cliente de verdad. Si ya tiene vehículos asociados, Postgres
+  /// rechaza el borrado (23503, restricción de llave foránea) y el
+  /// repositorio debe resolverlo desactivándolo en su lugar.
+  ///
+  /// Se pide `.select()` de vuelta a propósito: si RLS bloquea el borrado,
+  /// Postgres NO lanza error, simplemente borra 0 filas.
+  Future<bool> delete(String id) async {
+    final data = await _client.from('customers').delete().eq('id', id).select();
+    return (data as List).isNotEmpty;
   }
 }

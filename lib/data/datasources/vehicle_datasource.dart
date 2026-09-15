@@ -115,6 +115,13 @@ class VehicleDataSource {
     await _client.from('vehicles').update({'is_active': isActive}).eq('id', id);
   }
 
+  /// Cambia el dueño de una placa (el carro fue vendido/traspasado). El
+  /// historial de servicios sigue intacto porque es la misma fila de
+  /// vehículo, solo cambia a quién pertenece.
+  Future<void> transferToCustomer({required String vehicleId, required String newCustomerId}) async {
+    await _client.from('vehicles').update({'customer_id': newCustomerId}).eq('id', vehicleId);
+  }
+
   /// Borra la placa de verdad (para corregir errores de digitación). Si el
   /// vehículo ya tiene órdenes de servicio asociadas, Postgres rechaza el
   /// borrado (23503, restricción de llave foránea) y el repositorio debe

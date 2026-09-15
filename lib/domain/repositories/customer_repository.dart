@@ -21,4 +21,9 @@ abstract class CustomerRepository {
     String? notes,
   });
   Future<Either<Failure, void>> toggleActive({required String id, required bool isActive});
+
+  /// Elimina el cliente. Devuelve `Right(true)` si se borró de verdad, o
+  /// `Right(false)` si en vez de eso se desactivó porque ya tenía vehículos
+  /// o historial asociado.
+  Future<Either<Failure, bool>> delete(String id);
 }

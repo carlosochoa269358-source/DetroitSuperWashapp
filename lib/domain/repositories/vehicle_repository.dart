@@ -30,6 +30,10 @@ abstract class VehicleRepository {
   });
   Future<Either<Failure, void>> toggleActive({required String id, required bool isActive});
 
+  /// Cambia el dueño de una placa (el carro fue vendido/traspasado a otro
+  /// cliente). El historial de servicios de la placa no se ve afectado.
+  Future<Either<Failure, void>> transferToCustomer({required String vehicleId, required String newCustomerId});
+
   /// Elimina la placa. Devuelve `Right(true)` si se borró de verdad, o
   /// `Right(false)` si en vez de eso se desactivó porque ya tenía historial
   /// de servicios asociado (no se puede borrar sin perder ese historial).

@@ -3,6 +3,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/validators.dart';
 import '../../../domain/entities/customer_entity.dart';
 import '../../providers/auth_provider.dart';
@@ -27,6 +28,52 @@ class ClienteFormPage extends HookConsumerWidget {
     final notesController = useTextEditingController(text: customer?.notes);
     final isSaving = useState(false);
     final errorMessage = useState<String?>(null);
+
+    final currentUser = ref.watch(authProvider).value;
+    final canDelete = isEditing && (currentUser?.isAdminGeneral ?? false);
+
+    Future<void> deleteCustomer() async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.surface2,
+          title: const Text('¿Eliminar cliente?'),
+          content: Text(
+            'Se eliminará a ${customer!.fullName} y dejará de aparecer en la lista de clientes. Si tiene vehículos o historial de servicios, en vez de borrarse se ocultará por completo.',
+          ),
+          actions: [
+            TextButton(onPressed: () => context.pop(false), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () => context.pop(true),
+              child: const Text('Eliminar', style: TextStyle(color: AppColors.error)),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !context.mounted) return;
+
+      isSaving.value = true;
+      final result = await ref.read(customerRepositoryProvider).delete(customer!.id);
+      isSaving.value = false;
+      if (!context.mounted) return;
+
+      ref.invalidate(customerSearchProvider);
+      result.fold(
+        (failure) => errorMessage.value = failure.message,
+        (hardDeleted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                hardDeleted
+                    ? 'Cliente eliminado'
+                    : 'Este cliente tiene historial: se ocultó en lugar de borrarse',
+              ),
+            ),
+          );
+          context.go(AppRoutes.clientes);
+        },
+      );
+    }
 
     Future<void> save() async {
       if (!formKey.currentState!.validate()) return;
@@ -114,6 +161,14 @@ class ClienteFormPage extends HookConsumerWidget {
                 isLoading: isSaving.value,
                 onPressed: save,
               ),
+              if (canDelete) ...[
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: isSaving.value ? null : deleteCustomer,
+                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  label: const Text('Eliminar cliente', style: TextStyle(color: AppColors.error)),
+                ),
+              ],
             ],
           ),
         ),

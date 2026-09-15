@@ -146,6 +146,12 @@ class ClienteVehiculoPage extends HookConsumerWidget {
             } else {
               customerId = existing.id;
             }
+
+            // Si el cliente estaba eliminado/oculto y vuelve a aparecer, se
+            // reactiva para que no siga invisible en la lista de Clientes.
+            if (!existing.isActive) {
+              await ref.read(customerRepositoryProvider).toggleActive(id: existing.id, isActive: true);
+            }
           } else {
             final customerResult = await ref.read(customerRepositoryProvider).create(
                   companyId: user.companyId,

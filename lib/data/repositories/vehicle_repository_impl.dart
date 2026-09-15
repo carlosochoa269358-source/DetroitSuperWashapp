@@ -119,6 +119,16 @@ class VehicleRepositoryImpl implements VehicleRepository {
   }
 
   @override
+  Future<Either<Failure, void>> transferToCustomer({required String vehicleId, required String newCustomerId}) async {
+    try {
+      await dataSource.transferToCustomer(vehicleId: vehicleId, newCustomerId: newCustomerId);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, bool>> delete(String id) async {
     try {
       final deleted = await dataSource.delete(id);
