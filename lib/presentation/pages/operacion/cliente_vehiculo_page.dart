@@ -107,15 +107,56 @@ class ClienteVehiculoPage extends HookConsumerWidget {
               Validators.validatePhone(phoneController.text);
           if (phoneError != null) throw Exception(phoneError);
 
-          final customerResult = await ref.read(customerRepositoryProvider).create(
+          final typedName = nameController.text.trim();
+          final typedPhone = phoneController.text.trim();
+
+          // ¿Ya existe un cliente con este celular? Si sí, no intentamos
+          // crear uno nuevo (chocaría con la restricción de teléfono único
+          // y saldría un error feo) — en vez de eso, usamos ese cliente.
+          final existingResult = await ref.read(customerRepositoryProvider).getByPhone(
                 companyId: user.companyId,
-                fullName: nameController.text.trim(),
-                phone: phoneController.text.trim(),
+                phone: typedPhone,
               );
-          customerId = customerResult.fold(
-            (failure) => throw Exception('No se pudo crear el cliente: ${failure.message}'),
-            (c) => c.id,
+          final existing = existingResult.fold(
+            (failure) => throw Exception('No se pudo verificar el celular: ${failure.message}'),
+            (c) => c,
           );
+
+          if (existing != null) {
+            isSaving.value = false;
+            if (!context.mounted) return;
+            final action = await _showExistingPhoneDialog(context, existing, typedName);
+            if (action == null) {
+              return;
+            }
+            isSaving.value = true;
+
+            if (action == _ExistingPhoneAction.updateName) {
+              final updateResult = await ref.read(customerRepositoryProvider).update(
+                    id: existing.id,
+                    fullName: typedName,
+                    phone: existing.phone,
+                    email: existing.email,
+                    notes: existing.notes,
+                  );
+              customerId = updateResult.fold(
+                (failure) => throw Exception('No se pudo actualizar el cliente: ${failure.message}'),
+                (c) => c.id,
+              );
+            } else {
+              customerId = existing.id;
+            }
+          } else {
+            final customerResult = await ref.read(customerRepositoryProvider).create(
+                  companyId: user.companyId,
+                  fullName: typedName,
+                  phone: typedPhone,
+                );
+            customerId = customerResult.fold(
+              (failure) => throw Exception('No se pudo crear el cliente: ${failure.message}'),
+              (c) => c.id,
+            );
+          }
         }
 
         final vehicleResult = await ref.read(vehicleRepositoryProvider).create(
@@ -321,6 +362,48 @@ class ClienteVehiculoPage extends HookConsumerWidget {
       ),
     );
   }
+}
+
+enum _ExistingPhoneAction { keepExisting, updateName }
+
+Future<_ExistingPhoneAction?> _showExistingPhoneDialog(
+  BuildContext context,
+  CustomerEntity existing,
+  String typedName,
+) {
+  final sameName = existing.fullName.trim().toUpperCase() == typedName.trim().toUpperCase();
+  return showDialog<_ExistingPhoneAction>(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: const Text('Este celular ya está registrado'),
+      content: Text(
+        sameName
+            ? 'Ya existe un cliente con este número: ${existing.fullName}. Se le va a agregar este vehículo a ese cliente.'
+            : 'Ya existe un cliente con este número registrado como "${existing.fullName}", pero escribiste '
+                '"$typedName". ¿Dejamos el nombre que ya tenía, o lo actualizamos al que acabas de escribir?',
+        style: AppTextStyles.body2,
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        if (sameName)
+          TextButton(
+            onPressed: () => Navigator.pop(context, _ExistingPhoneAction.keepExisting),
+            child: const Text('CONTINUAR', style: TextStyle(color: AppColors.primary)),
+          )
+        else ...[
+          TextButton(
+            onPressed: () => Navigator.pop(context, _ExistingPhoneAction.keepExisting),
+            child: Text('Dejar "${existing.fullName}"'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, _ExistingPhoneAction.updateName),
+            child: const Text('Actualizar nombre', style: TextStyle(color: AppColors.primary)),
+          ),
+        ],
+      ],
+    ),
+  );
 }
 
 class _CustomerSearchResults extends ConsumerWidget {

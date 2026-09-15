@@ -57,6 +57,20 @@ class CustomerDataSource {
     return results.values.toList();
   }
 
+  /// Busca un cliente por celular EXACTO (no parcial) — para detectar, antes
+  /// de crear "cliente nuevo", que ese número ya pertenece a alguien y
+  /// evitar el error de restricción única + ofrecer usar ese cliente.
+  Future<CustomerModel?> getByPhone({required String companyId, required String phone}) async {
+    final data = await _client
+        .from('customers')
+        .select()
+        .eq('company_id', companyId)
+        .eq('phone', phone)
+        .maybeSingle();
+    if (data == null) return null;
+    return CustomerModel.fromJson(data);
+  }
+
   Future<CustomerModel> getById(String id) async {
     final data = await _client.from('customers').select().eq('id', id).single();
     return CustomerModel.fromJson(data);

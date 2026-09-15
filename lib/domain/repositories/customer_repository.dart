@@ -5,6 +5,7 @@ import '../entities/customer_entity.dart';
 abstract class CustomerRepository {
   Future<Either<Failure, List<CustomerEntity>>> search({required String companyId, String? query});
   Future<Either<Failure, CustomerEntity>> getById(String id);
+  Future<Either<Failure, CustomerEntity?>> getByPhone({required String companyId, required String phone});
   Future<Either<Failure, CustomerEntity>> create({
     required String companyId,
     required String fullName,

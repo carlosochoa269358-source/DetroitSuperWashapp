@@ -30,6 +30,16 @@ class CustomerRepositoryImpl implements CustomerRepository {
   }
 
   @override
+  Future<Either<Failure, CustomerEntity?>> getByPhone({required String companyId, required String phone}) async {
+    try {
+      final result = await dataSource.getByPhone(companyId: companyId, phone: phone);
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, CustomerEntity>> create({
     required String companyId,
     required String fullName,
