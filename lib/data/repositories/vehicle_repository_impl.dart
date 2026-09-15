@@ -121,7 +121,10 @@ class VehicleRepositoryImpl implements VehicleRepository {
   @override
   Future<Either<Failure, bool>> delete(String id) async {
     try {
-      await dataSource.delete(id);
+      final deleted = await dataSource.delete(id);
+      if (!deleted) {
+        return Left(ServerFailure('No se pudo eliminar la placa (sin permisos o ya no existe)'));
+      }
       return const Right(true);
     } on PostgrestException catch (e) {
       if (e.code == '23503') {

@@ -119,7 +119,13 @@ class VehicleDataSource {
   /// vehículo ya tiene órdenes de servicio asociadas, Postgres rechaza el
   /// borrado (23503, restricción de llave foránea) y el repositorio debe
   /// resolverlo desactivándola en su lugar.
-  Future<void> delete(String id) async {
-    await _client.from('vehicles').delete().eq('id', id);
+  ///
+  /// Se pide `.select()` de vuelta a propósito: si RLS bloquea el borrado
+  /// (falta la política, o el usuario no tiene permiso), Postgres NO lanza
+  /// error, simplemente borra 0 filas — sin este chequeo la app reportaría
+  /// éxito sin haber borrado nada.
+  Future<bool> delete(String id) async {
+    final data = await _client.from('vehicles').delete().eq('id', id).select();
+    return (data as List).isNotEmpty;
   }
 }
