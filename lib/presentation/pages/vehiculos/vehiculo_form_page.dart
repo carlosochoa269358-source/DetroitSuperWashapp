@@ -49,32 +49,129 @@ class VehiculoFormPage extends HookConsumerWidget {
       final repo = ref.read(vehicleRepositoryProvider);
       final plate = plateController.text.trim().toUpperCase().replaceAll(' ', '');
       final year = yearController.text.trim().isEmpty ? null : int.tryParse(yearController.text.trim());
+      final vehicleTypeId = selectedVehicleTypeId.value;
+      final brand = brandController.text.trim().isEmpty ? null : brandController.text.trim();
+      final model = modelController.text.trim().isEmpty ? null : modelController.text.trim();
+      final color = colorController.text.trim().isEmpty ? null : colorController.text.trim();
+      final notes = notesController.text.trim().isEmpty ? null : notesController.text.trim();
 
-      final result = isEditing
-          ? await repo.update(
-              id: vehicle!.id,
-              vehicleTypeId: selectedVehicleTypeId.value,
-              plate: plate,
-              brand: brandController.text.trim().isEmpty ? null : brandController.text.trim(),
-              model: modelController.text.trim().isEmpty ? null : modelController.text.trim(),
-              color: colorController.text.trim().isEmpty ? null : colorController.text.trim(),
-              year: year,
-              notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
-            )
-          : await repo.create(
-              companyId: ref.read(authProvider).value!.companyId,
-              customerId: customerId,
-              vehicleTypeId: selectedVehicleTypeId.value,
-              plate: plate,
-              brand: brandController.text.trim().isEmpty ? null : brandController.text.trim(),
-              model: modelController.text.trim().isEmpty ? null : modelController.text.trim(),
-              color: colorController.text.trim().isEmpty ? null : colorController.text.trim(),
-              year: year,
-              notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
-            );
+      if (isEditing) {
+        final result = await repo.update(
+          id: vehicle!.id,
+          vehicleTypeId: vehicleTypeId,
+          plate: plate,
+          brand: brand,
+          model: model,
+          color: color,
+          year: year,
+          notes: notes,
+        );
+        isSaving.value = false;
+        result.fold(
+          (failure) => errorMessage.value = failure.message,
+          (savedVehicle) {
+            ref.invalidate(vehiclesByCustomerProvider(customerId));
+            if (context.mounted) context.pop(savedVehicle);
+          },
+        );
+        return;
+      }
 
+      // Creando placa nueva: revisa primero si ya existe (activa o no) —
+      // es única en toda la empresa y desactivarla no libera el valor, así
+      // que sin este chequeo saldría el error crudo de restricción única.
+      final companyId = ref.read(authProvider).value!.companyId;
+      final existingResult = await repo.getByPlateAny(companyId: companyId, plate: plate);
+      String? checkError;
+      VehicleEntity? existing;
+      existingResult.fold((failure) => checkError = failure.message, (v) => existing = v);
+      if (checkError != null) {
+        isSaving.value = false;
+        errorMessage.value = 'No se pudo verificar la placa: $checkError';
+        return;
+      }
+
+      if (existing != null) {
+        if (existing!.customerId == customerId) {
+          isSaving.value = false;
+          errorMessage.value = 'Este cliente ya tiene registrada la placa $plate.';
+          return;
+        }
+
+        isSaving.value = false;
+        if (!context.mounted) return;
+        final ownerResult = await ref.read(customerRepositoryProvider).getById(existing!.customerId);
+        final ownerName = ownerResult.fold((failure) => 'otro cliente', (c) => c.fullName);
+        if (!context.mounted) return;
+
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: AppColors.surface2,
+            title: const Text('La placa ya existe'),
+            content: Text(
+              'La placa $plate ya está registrada a nombre de $ownerName. ¿Transferirla a este cliente en vez de crear una nueva?',
+            ),
+            actions: [
+              TextButton(onPressed: () => context.pop(false), child: const Text('Cancelar')),
+              TextButton(
+                onPressed: () => context.pop(true),
+                child: const Text('Transferir', style: TextStyle(color: AppColors.primary)),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true || !context.mounted) return;
+
+        isSaving.value = true;
+        String? actionError;
+
+        final transferResult =
+            await repo.transferToCustomer(vehicleId: existing!.id, newCustomerId: customerId);
+        transferResult.fold((failure) => actionError = failure.message, (_) {});
+
+        if (actionError == null && !existing!.isActive) {
+          final reactivateResult = await repo.toggleActive(id: existing!.id, isActive: true);
+          reactivateResult.fold((failure) => actionError = failure.message, (_) {});
+        }
+
+        if (actionError == null) {
+          final updateResult = await repo.update(
+            id: existing!.id,
+            vehicleTypeId: vehicleTypeId,
+            plate: plate,
+            brand: brand,
+            model: model,
+            color: color,
+            year: year,
+            notes: notes,
+          );
+          updateResult.fold((failure) => actionError = failure.message, (_) {});
+        }
+
+        isSaving.value = false;
+        if (actionError != null) {
+          errorMessage.value = actionError;
+          return;
+        }
+        ref.invalidate(vehiclesByCustomerProvider(customerId));
+        if (context.mounted) context.pop(existing);
+        return;
+      }
+
+      final createResult = await repo.create(
+        companyId: companyId,
+        customerId: customerId,
+        vehicleTypeId: vehicleTypeId,
+        plate: plate,
+        brand: brand,
+        model: model,
+        color: color,
+        year: year,
+        notes: notes,
+      );
       isSaving.value = false;
-      result.fold(
+      createResult.fold(
         (failure) => errorMessage.value = failure.message,
         (savedVehicle) {
           ref.invalidate(vehiclesByCustomerProvider(customerId));

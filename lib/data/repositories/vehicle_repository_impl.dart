@@ -41,6 +41,16 @@ class VehicleRepositoryImpl implements VehicleRepository {
   }
 
   @override
+  Future<Either<Failure, VehicleEntity?>> getByPlateAny({required String companyId, required String plate}) async {
+    try {
+      final result = await dataSource.getByPlateAny(companyId: companyId, plate: plate);
+      return Right(result);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, List<VehicleEntity>>> searchByPlate({required String companyId, required String query}) async {
     try {
       final result = await dataSource.searchByPlate(companyId: companyId, query: query);

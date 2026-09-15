@@ -3,7 +3,6 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_routes.dart';
 import '../../../core/utils/validators.dart';
 import '../../../domain/entities/customer_entity.dart';
 import '../../providers/auth_provider.dart';
@@ -70,7 +69,12 @@ class ClienteFormPage extends HookConsumerWidget {
               ),
             ),
           );
-          context.go(AppRoutes.clientes);
+          // Cierra este formulario Y la ficha del cliente (ya eliminado), en
+          // vez de context.go() — eso reemplazaba toda la pila de navegación
+          // y dejaba a la lista de Clientes sin flecha para volver atrás.
+          Navigator.of(context)
+            ..pop()
+            ..pop();
         },
       );
     }

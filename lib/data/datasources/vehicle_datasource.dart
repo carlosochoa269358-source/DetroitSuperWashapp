@@ -27,6 +27,22 @@ class VehicleDataSource {
     return VehicleModel.fromJson(data);
   }
 
+  /// Igual que getByPlate, pero SIN el filtro de is_active — para detectar,
+  /// antes de crear una placa nueva, que ya existe (activa o "eliminada")
+  /// y evitar el error crudo de restricción única (la placa es única esté
+  /// activa o no, así que desactivarla no libera el valor).
+  Future<VehicleModel?> getByPlateAny({required String companyId, required String plate}) async {
+    final cleanPlate = plate.toUpperCase().replaceAll(' ', '');
+    final data = await _client
+        .from('vehicles')
+        .select()
+        .eq('company_id', companyId)
+        .eq('plate', cleanPlate)
+        .maybeSingle();
+    if (data == null) return null;
+    return VehicleModel.fromJson(data);
+  }
+
   /// Búsqueda parcial: cualquier vehículo cuya placa CONTENGA lo escrito
   /// (no tiene que ser exacta ni empezar por ahí), para "Buscar por placa".
   Future<List<VehicleModel>> searchByPlate({required String companyId, required String query}) async {
