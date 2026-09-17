@@ -8,6 +8,8 @@ import '../../../core/utils/validators.dart';
 import '../../../domain/entities/service_order_item_entity.dart';
 import '../../providers/accounts_receivable_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/cash_register_provider.dart';
+import '../../providers/employee_settlement_provider.dart';
 import '../../providers/service_order_item_provider.dart';
 import '../../providers/service_order_provider.dart';
 import '../../widgets/common/detroit_text_field.dart';
@@ -163,6 +165,14 @@ class OrdenDetallePage extends HookConsumerWidget {
           ref.invalidate(serviceOrdersByStatusProvider('finished'));
           ref.invalidate(serviceOrdersByStatusProvider('paid'));
           ref.invalidate(openAccountsReceivableProvider);
+          // Anular reversa pagos, así que Caja también debe refrescarse.
+          final register = ref.read(anyOpenCashRegisterProvider).value;
+          if (register != null) {
+            ref.invalidate(servicesSummaryProvider(register.id));
+            ref.invalidate(paymentMethodTotalsProvider(register.id));
+            ref.invalidate(cashPaymentsTotalProvider(register.id));
+          }
+          ref.invalidate(employeePendingSummaryProvider);
           if (context.mounted) Navigator.of(context).pop();
         },
       );

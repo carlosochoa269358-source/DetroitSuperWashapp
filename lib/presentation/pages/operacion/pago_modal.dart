@@ -9,6 +9,7 @@ import '../../../domain/entities/service_order_entity.dart';
 import '../../providers/accounts_receivable_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cash_register_provider.dart';
+import '../../providers/employee_settlement_provider.dart';
 import '../../providers/service_order_provider.dart';
 import '../../widgets/common/detroit_button.dart';
 import '../../widgets/common/detroit_text_field.dart';
@@ -74,6 +75,14 @@ class _PagoSheet extends HookConsumerWidget {
           ref.invalidate(serviceOrdersByStatusProvider('paid'));
           ref.invalidate(serviceOrdersByStatusProvider('receivable'));
           ref.invalidate(openAccountsReceivableProvider);
+          // Sin esto, Caja (Servicios/Métodos de pago/Liquidación) se queda
+          // con los números de antes del cobro hasta que algo más la
+          // refresque — de ahí que pareciera que "toca cerrar y volver a
+          // abrir la app" para que se vea al día.
+          ref.invalidate(servicesSummaryProvider(register.id));
+          ref.invalidate(paymentMethodTotalsProvider(register.id));
+          ref.invalidate(cashPaymentsTotalProvider(register.id));
+          ref.invalidate(employeePendingSummaryProvider);
           if (context.mounted) Navigator.of(context).pop();
         },
       );
@@ -222,6 +231,10 @@ class _AbonoSheet extends HookConsumerWidget {
                 (_) {
                   ref.invalidate(openAccountsReceivableProvider);
                   ref.invalidate(serviceOrdersByStatusProvider('paid'));
+                  ref.invalidate(servicesSummaryProvider(register.id));
+                  ref.invalidate(paymentMethodTotalsProvider(register.id));
+                  ref.invalidate(cashPaymentsTotalProvider(register.id));
+                  ref.invalidate(employeePendingSummaryProvider);
                   if (context.mounted) Navigator.of(context).pop();
                 },
               );
