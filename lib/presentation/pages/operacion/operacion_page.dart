@@ -9,6 +9,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../domain/entities/accounts_receivable_entity.dart';
 import '../../../domain/entities/service_order_entity.dart';
 import '../../providers/accounts_receivable_provider.dart';
+import '../../providers/cash_register_provider.dart';
 import '../../providers/service_order_provider.dart';
 import '../../widgets/common/detroit_card.dart';
 import '../../widgets/common/loading_widget.dart';
@@ -17,41 +18,90 @@ import 'pago_modal.dart';
 /// Cuerpo de la pestaña "Servicios" del shell principal. No trae su propio
 /// Scaffold/AppBar/FAB — esos los provee DashboardPage para tener una sola
 /// barra superior y un solo botón flotante en toda la app.
-class OperacionPage extends StatelessWidget {
+class OperacionPage extends ConsumerWidget {
   const OperacionPage({super.key});
 
   @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final registerAsync = ref.watch(anyOpenCashRegisterProvider);
+
+    return registerAsync.when(
+      loading: () => const LoadingWidget(),
+      error: (error, stack) => Center(
+        child: Text('Error: $error', style: const TextStyle(color: AppColors.error)),
+      ),
+      data: (register) {
+        if (register == null) return const _SinTurnoAbierto();
+
+        return DefaultTabController(
+          length: 4,
+          child: Column(
+            children: [
+              Container(
+                color: AppColors.background,
+                child: const TabBar(
+                  isScrollable: true,
+                  indicatorColor: AppColors.primary,
+                  labelColor: AppColors.primary,
+                  unselectedLabelColor: AppColors.textMuted,
+                  tabs: [
+                    Tab(text: 'Nuevas'),
+                    Tab(text: 'Finalizadas'),
+                    Tab(text: 'Pagadas'),
+                    Tab(text: 'Por Cobrar'),
+                  ],
+                ),
+              ),
+              const Expanded(
+                child: TabBarView(
+                  children: [
+                    _OrdersTab(status: 'new'),
+                    _OrdersTab(status: 'finished'),
+                    _OrdersTab(status: 'paid'),
+                    _ReceivableTab(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Se muestra en vez de la lista de órdenes cuando no hay turno abierto —
+/// deja entrar a admin_general/admin_punto a revisar el resto de la app sin
+/// obligarlos a abrir caja, pero registrar servicios sigue requiriendo uno.
+class _SinTurnoAbierto extends StatelessWidget {
+  const _SinTurnoAbierto();
+
+  @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 4,
-      child: Column(
-        children: [
-          Container(
-            color: AppColors.background,
-            child: const TabBar(
-              isScrollable: true,
-              indicatorColor: AppColors.primary,
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.textMuted,
-              tabs: [
-                Tab(text: 'Nuevas'),
-                Tab(text: 'Finalizadas'),
-                Tab(text: 'Pagadas'),
-                Tab(text: 'Por Cobrar'),
-              ],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.point_of_sale_outlined, size: 48, color: AppColors.textMuted),
+            const SizedBox(height: 16),
+            Text('No hay un turno abierto', style: AppTextStyles.heading4, textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            Text(
+              'Para registrar servicios primero hay que abrir el turno.',
+              style: AppTextStyles.body2,
+              textAlign: TextAlign.center,
             ),
-          ),
-          const Expanded(
-            child: TabBarView(
-              children: [
-                _OrdersTab(status: 'new'),
-                _OrdersTab(status: 'finished'),
-                _OrdersTab(status: 'paid'),
-                _ReceivableTab(),
-              ],
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => context.push(AppRoutes.turno),
+              icon: const Icon(Icons.lock_open),
+              label: const Text('Abrir turno'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: AppColors.background),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

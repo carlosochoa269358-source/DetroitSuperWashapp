@@ -59,7 +59,13 @@ class DetroitApp extends ConsumerWidget {
 
         if (isAuth && !turnoAsync.isLoading) {
           final hasOpenTurno = turnoAsync.value != null;
-          if (!hasOpenTurno && !isTurno) return AppRoutes.turno;
+          final user = authState.value;
+          // admin_general y admin_punto pueden entrar a revisar (Historial,
+          // Reportes, Clientes, Configuración) sin necesidad de abrir turno
+          // — solo lo necesitan de verdad si van a registrar servicios,
+          // donde la propia pestaña "Servicios" ya pide abrirlo.
+          final canBrowseWithoutTurno = (user?.isAdminGeneral ?? false) || (user?.isAdminPunto ?? false);
+          if (!hasOpenTurno && !isTurno && !canBrowseWithoutTurno) return AppRoutes.turno;
           if (hasOpenTurno && isTurno) return AppRoutes.dashboard;
         }
 

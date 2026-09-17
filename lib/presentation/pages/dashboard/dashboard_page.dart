@@ -121,7 +121,7 @@ class DashboardPage extends HookConsumerWidget {
           tabIndex.value = index;
         },
       ),
-      floatingActionButton: tabIndex.value == 0
+      floatingActionButton: tabIndex.value == 0 && (registerAsync.value != null)
           ? FloatingActionButton.extended(
               onPressed: () => context.push(AppRoutes.nuevoServicio),
               backgroundColor: AppColors.primary,
