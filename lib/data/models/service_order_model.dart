@@ -25,6 +25,7 @@ class ServiceOrderModel extends ServiceOrderEntity {
     super.vehicleTypeId,
     super.workerName,
     super.serviceNames,
+    super.paymentMethods,
   });
 
   /// Soporta filas con los recursos embebidos customers/vehicles/
@@ -46,6 +47,25 @@ class ServiceOrderModel extends ServiceOrderEntity {
           if ((item as Map<String, dynamic>)['services'] != null)
             (item['services'] as Map<String, dynamic>)['name'] as String,
     ];
+
+    // Métodos de pago: los directos (tabla payments, sin reversar) más los
+    // abonos de fiado que terminaron de saldar la orden (accounts_receivable
+    // -> accounts_receivable_payments) — puede haber de los dos si se pagó
+    // parte de contado y el resto después.
+    final paymentsJson = json['payments'] as List<dynamic>?;
+    final receivablesJson = json['accounts_receivable'] as List<dynamic>?;
+    final paymentMethods = <String>{
+      if (paymentsJson != null)
+        for (final p in paymentsJson)
+          if ((p as Map<String, dynamic>)['is_reversed'] != true && p['payment_method'] != null)
+            p['payment_method'] as String,
+      if (receivablesJson != null)
+        for (final ar in receivablesJson)
+          if ((ar as Map<String, dynamic>)['accounts_receivable_payments'] != null)
+            for (final abono in (ar['accounts_receivable_payments'] as List<dynamic>))
+              if ((abono as Map<String, dynamic>)['payment_method'] != null)
+                abono['payment_method'] as String,
+    }.toList();
 
     return ServiceOrderModel(
       id: json['id'] as String,
@@ -71,6 +91,7 @@ class ServiceOrderModel extends ServiceOrderEntity {
       vehicleTypeId: vehicle?['vehicle_type_id'] as String?,
       workerName: workerName,
       serviceNames: serviceNames,
+      paymentMethods: paymentMethods,
     );
   }
 }

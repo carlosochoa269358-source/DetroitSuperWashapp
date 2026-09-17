@@ -30,10 +30,7 @@ class TurnoHistorialDetallePage extends ConsumerWidget {
         appBar: DetroitAppBar(title: 'Turno #${register.id.substring(0, 5)}'),
         body: Column(
           children: [
-            _TurnoSummaryCard(register: register),
-            _ServiciosResumenCard(cashRegisterId: register.id),
-            _ComisionTotalCard(cashRegisterId: register.id),
-            _MetodosPagoCard(cashRegisterId: register.id),
+            _TurnoStatsGrid(register: register),
             const TabBar(
               indicatorColor: AppColors.primary,
               labelColor: AppColors.primary,
@@ -64,223 +61,161 @@ class TurnoHistorialDetallePage extends ConsumerWidget {
   }
 }
 
-class _TurnoSummaryCard extends StatelessWidget {
+/// Encabezado compacto (apertura/cierre/quién) + cuadrícula de tarjeticas
+/// pequeñas (estilo widget de iPhone) con los totales del turno — antes eran
+/// 4 tarjetas completas apiladas que en el celular dejaban casi sin espacio
+/// la lista de órdenes de abajo.
+class _TurnoStatsGrid extends ConsumerWidget {
   final CashRegisterEntity register;
 
-  const _TurnoSummaryCard({required this.register});
+  const _TurnoStatsGrid({required this.register});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final serviciosAsync = ref.watch(servicesSummaryProvider(register.id));
+    final settledAsync = ref.watch(turnoSettlementsProvider(register.id));
+    final metodosAsync = ref.watch(paymentMethodTotalsProvider(register.id));
+
     return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: DetroitCard(
-        accentColor: AppColors.primary,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Apertura: ${DateFormatter.formatDateTime(register.openedAt)}',
-              style: AppTextStyles.body2,
-            ),
-            Text(
-              'Cierre: ${register.closedAt != null ? DateFormatter.formatDateTime(register.closedAt!) : '—'}',
-              style: AppTextStyles.body2,
-            ),
-            if (register.openedByName != null || register.closedByName != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Abrió: ${register.openedByName ?? '—'}  ·  Cerró: ${register.closedByName ?? '—'}',
-                style: AppTextStyles.caption,
-              ),
-            ],
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Caja inicial', style: AppTextStyles.caption),
-                Text(CurrencyFormatter.format(register.openingAmount), style: AppTextStyles.body2),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Esperado / Contado', style: AppTextStyles.caption),
-                Text(
-                  '${CurrencyFormatter.format(register.closingAmountExpected ?? 0)} / ${CurrencyFormatter.format(register.closingAmountCounted ?? 0)}',
-                  style: AppTextStyles.body2,
-                ),
-              ],
-            ),
-            if (register.closingDifference != null && register.closingDifference != 0) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Diferencia', style: AppTextStyles.caption),
-                  Text(
-                    CurrencyFormatter.format(register.closingDifference!),
-                    style: AppTextStyles.body2.copyWith(color: AppColors.error),
-                  ),
-                ],
-              ),
-              if (register.differenceReason != null)
-                Text(register.differenceReason!, style: AppTextStyles.caption),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ResumenRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isTotal;
-
-  const _ResumenRow({required this.label, required this.value, this.isTotal = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final style = isTotal
-        ? AppTextStyles.body1.copyWith(fontWeight: FontWeight.w700, color: AppColors.primary)
-        : AppTextStyles.body2;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: style),
-          Text(value, style: style),
+          Text(
+            'Apertura: ${DateFormatter.formatDateTime(register.openedAt)}   ·   '
+            'Cierre: ${register.closedAt != null ? DateFormatter.formatDateTime(register.closedAt!) : '—'}',
+            style: AppTextStyles.caption,
+          ),
+          if (register.openedByName != null || register.closedByName != null)
+            Text(
+              'Abrió: ${register.openedByName ?? '—'}   ·   Cerró: ${register.closedByName ?? '—'}',
+              style: AppTextStyles.caption,
+            ),
+          if (register.closingDifference != null &&
+              register.closingDifference != 0 &&
+              register.differenceReason != null)
+            Text(register.differenceReason!, style: AppTextStyles.caption.copyWith(color: AppColors.error)),
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 8.0;
+              final tileWidth = (constraints.maxWidth - spacing) / 2;
+
+              final tiles = <Widget>[
+                _StatTile(
+                  width: tileWidth,
+                  label: 'Caja inicial',
+                  value: CurrencyFormatter.format(register.openingAmount),
+                ),
+                _StatTile(
+                  width: tileWidth,
+                  label: 'Esperado',
+                  value: CurrencyFormatter.format(register.closingAmountExpected ?? 0),
+                ),
+                _StatTile(
+                  width: tileWidth,
+                  label: 'Contado',
+                  value: CurrencyFormatter.format(register.closingAmountCounted ?? 0),
+                ),
+                if (register.closingDifference != null && register.closingDifference != 0)
+                  _StatTile(
+                    width: tileWidth,
+                    label: 'Diferencia',
+                    value: CurrencyFormatter.format(register.closingDifference!),
+                    valueColor: AppColors.error,
+                  ),
+                serviciosAsync.when(
+                  loading: () => _StatTile.loading(width: tileWidth, label: 'Servicios'),
+                  error: (error, stack) => _StatTile.error(width: tileWidth, label: 'Servicios'),
+                  data: (summary) => _StatTile(
+                    width: tileWidth,
+                    label: '${summary.count} servicio(s)',
+                    value: CurrencyFormatter.format(summary.total),
+                  ),
+                ),
+                settledAsync.when(
+                  loading: () => _StatTile.loading(width: tileWidth, label: 'Comisión'),
+                  error: (error, stack) => _StatTile.error(width: tileWidth, label: 'Comisión'),
+                  data: (settlements) {
+                    final total = settlements.fold<double>(0, (sum, s) => sum + s.commissionPaid);
+                    return _StatTile(
+                      width: tileWidth,
+                      label: 'Comisión liquidada',
+                      value: CurrencyFormatter.format(total),
+                    );
+                  },
+                ),
+                ...metodosAsync.when(
+                  loading: () => [_StatTile.loading(width: tileWidth, label: 'Métodos de pago')],
+                  error: (error, stack) => [_StatTile.error(width: tileWidth, label: 'Métodos de pago')],
+                  data: (totals) {
+                    if (totals.isEmpty) {
+                      return [_StatTile(width: tileWidth, label: 'Métodos de pago', value: 'Nada cobrado')];
+                    }
+                    final byMethod = {for (final t in totals) t.method: t};
+                    double grandTotal = 0;
+                    final methodTiles = <Widget>[];
+                    for (final entry in paymentMethodLabels.entries) {
+                      final totalForMethod = byMethod[entry.key];
+                      if (totalForMethod == null) continue;
+                      grandTotal += totalForMethod.total;
+                      methodTiles.add(_StatTile(
+                        width: tileWidth,
+                        label: '${entry.value} (${totalForMethod.count})',
+                        value: CurrencyFormatter.format(totalForMethod.total),
+                      ));
+                    }
+                    methodTiles.add(_StatTile(
+                      width: tileWidth,
+                      label: 'Total cobrado',
+                      value: CurrencyFormatter.format(grandTotal),
+                      valueColor: AppColors.primary,
+                    ));
+                    return methodTiles;
+                  },
+                ),
+              ];
+
+              return Wrap(spacing: spacing, runSpacing: spacing, children: tiles);
+            },
+          ),
         ],
       ),
     );
   }
 }
 
-/// Cantidad y valor total de los servicios atendidos en este turno.
-class _ServiciosResumenCard extends ConsumerWidget {
-  final String cashRegisterId;
+/// Tarjetica pequeña estilo widget (etiqueta arriba, valor grande abajo).
+class _StatTile extends StatelessWidget {
+  final double width;
+  final String label;
+  final String value;
+  final Color? valueColor;
 
-  const _ServiciosResumenCard({required this.cashRegisterId});
+  const _StatTile({required this.width, required this.label, required this.value, this.valueColor});
+
+  factory _StatTile.loading({required double width, required String label}) =>
+      _StatTile(width: width, label: label, value: '…');
+
+  factory _StatTile.error({required double width, required String label}) =>
+      _StatTile(width: width, label: label, value: 'Error', valueColor: AppColors.error);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final summaryAsync = ref.watch(servicesSummaryProvider(cashRegisterId));
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
       child: DetroitCard(
-        accentColor: AppColors.primary,
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Servicios', style: AppTextStyles.heading4),
-            const SizedBox(height: 8),
-            summaryAsync.when(
-              loading: () => const LoadingWidget(),
-              error: (error, stack) => Text('Error: $error', style: const TextStyle(color: AppColors.error)),
-              data: (summary) => _ResumenRow(
-                label: '${summary.count} servicio(s)',
-                value: CurrencyFormatter.format(summary.total),
-                isTotal: true,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Total de comisión liquidada (pagada a trabajadores) durante este turno.
-class _ComisionTotalCard extends ConsumerWidget {
-  final String cashRegisterId;
-
-  const _ComisionTotalCard({required this.cashRegisterId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final settledAsync = ref.watch(turnoSettlementsProvider(cashRegisterId));
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: DetroitCard(
-        accentColor: AppColors.primary,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Comisión liquidada en este turno', style: AppTextStyles.heading4),
-            const SizedBox(height: 8),
-            settledAsync.when(
-              loading: () => const LoadingWidget(),
-              error: (error, stack) => Text('Error: $error', style: const TextStyle(color: AppColors.error)),
-              data: (settlements) {
-                final total = settlements.fold<double>(0, (sum, s) => sum + s.commissionPaid);
-                return _ResumenRow(
-                  label: 'Total',
-                  value: CurrencyFormatter.format(total),
-                  isTotal: true,
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Desglose de lo cobrado en este turno por método de pago.
-class _MetodosPagoCard extends ConsumerWidget {
-  final String cashRegisterId;
-
-  const _MetodosPagoCard({required this.cashRegisterId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final totalsAsync = ref.watch(paymentMethodTotalsProvider(cashRegisterId));
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: DetroitCard(
-        accentColor: AppColors.primary,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Métodos de pago', style: AppTextStyles.heading4),
-            const SizedBox(height: 8),
-            totalsAsync.when(
-              loading: () => const LoadingWidget(),
-              error: (error, stack) => Text('Error: $error', style: const TextStyle(color: AppColors.error)),
-              data: (totals) {
-                if (totals.isEmpty) {
-                  return Text('No se cobró nada durante este turno.', style: AppTextStyles.body2);
-                }
-                final byMethod = {for (final t in totals) t.method: t};
-                double grandTotal = 0;
-                final rows = <Widget>[];
-                for (final entry in paymentMethodLabels.entries) {
-                  final totalForMethod = byMethod[entry.key];
-                  if (totalForMethod == null) continue;
-                  grandTotal += totalForMethod.total;
-                  rows.add(_ResumenRow(
-                    label: '${entry.value} (${totalForMethod.count})',
-                    value: CurrencyFormatter.format(totalForMethod.total),
-                  ));
-                }
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ...rows,
-                    const Divider(color: AppColors.divider),
-                    _ResumenRow(
-                      label: 'Total',
-                      value: CurrencyFormatter.format(grandTotal),
-                      isTotal: true,
-                    ),
-                  ],
-                );
-              },
+            Text(label, style: AppTextStyles.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.w700, color: valueColor),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -346,6 +281,11 @@ class _HistorialOrderCard extends StatelessWidget {
             CurrencyFormatter.format(order.finalPrice),
             style: AppTextStyles.body1.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
           ),
+          if (order.status == 'paid' && order.paymentMethods.isNotEmpty)
+            Text(
+              order.paymentMethods.map((m) => paymentMethodLabels[m] ?? m).join(' + '),
+              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+            ),
         ],
       ),
     );

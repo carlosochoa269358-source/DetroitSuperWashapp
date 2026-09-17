@@ -207,6 +207,11 @@ class OrdenDetallePage extends HookConsumerWidget {
                       Text(order.customerName ?? '—', style: AppTextStyles.body2),
                       if (order.workerName != null)
                         Text('Lavador: ${order.workerName}', style: AppTextStyles.caption),
+                      if (order.paymentMethods.isNotEmpty)
+                        Text(
+                          'Pagado con: ${order.paymentMethods.map((m) => paymentMethodLabels[m] ?? m).join(' + ')}',
+                          style: AppTextStyles.caption,
+                        ),
                     ],
                   ),
                 ),

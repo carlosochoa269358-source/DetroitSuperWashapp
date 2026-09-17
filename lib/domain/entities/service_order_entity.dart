@@ -24,6 +24,9 @@ class ServiceOrderEntity {
   final String? vehicleTypeId;
   final String? workerName;
   final List<String> serviceNames;
+  /// Métodos de pago usados para saldar la orden (puede haber más de uno si
+  /// se pagó parte de contado y el resto se abonó después como fiado).
+  final List<String> paymentMethods;
 
   ServiceOrderEntity({
     required this.id,
@@ -49,5 +52,6 @@ class ServiceOrderEntity {
     this.vehicleTypeId,
     this.workerName,
     this.serviceNames = const [],
+    this.paymentMethods = const [],
   });
 }

@@ -139,6 +139,13 @@ class _OrderCard extends ConsumerWidget {
                     style: AppTextStyles.body1.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
                   ),
                 ],
+                if (order.status == 'paid' && order.paymentMethods.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    order.paymentMethods.map((m) => paymentMethodLabels[m] ?? m).join(' + '),
+                    style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                  ),
+                ],
               ],
             ),
           ),

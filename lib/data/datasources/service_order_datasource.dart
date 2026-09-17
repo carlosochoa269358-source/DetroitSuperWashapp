@@ -9,7 +9,9 @@ class ServiceOrderDataSource {
     customers(full_name, phone),
     vehicles(plate, vehicle_type_id),
     service_order_workers(employees(full_name)),
-    service_order_items(id, services(name))
+    service_order_items(id, services(name)),
+    payments(payment_method, is_reversed),
+    accounts_receivable(accounts_receivable_payments(payment_method))
   ''';
 
   /// [cashRegisterId] escopa la consulta al turno actual: para 'new'/'finished'
