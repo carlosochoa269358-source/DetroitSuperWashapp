@@ -127,11 +127,19 @@ class _OrdersTab extends ConsumerWidget {
             child: Text(_emptyMessage(status), style: AppTextStyles.body2, textAlign: TextAlign.center),
           );
         }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: orders.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (context, index) => _OrderCard(order: orders[index]),
+        final total = orders.fold<double>(0, (sum, o) => sum + o.finalPrice);
+        return Column(
+          children: [
+            _TotalHeader(total: total),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                itemCount: orders.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) => _OrderCard(order: orders[index]),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -265,13 +273,42 @@ class _ReceivableTab extends ConsumerWidget {
             child: Text('No hay cuentas por cobrar pendientes.', style: AppTextStyles.body2),
           );
         }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: receivables.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (context, index) => _ReceivableCard(receivable: receivables[index]),
+        final total = receivables.fold<double>(0, (sum, r) => sum + r.pendingAmount);
+        return Column(
+          children: [
+            _TotalHeader(total: total),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                itemCount: receivables.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) => _ReceivableCard(receivable: receivables[index]),
+              ),
+            ),
+          ],
         );
       },
+    );
+  }
+}
+
+/// Total en dinero de la pestaña actual, alineado arriba a la derecha.
+class _TotalHeader extends StatelessWidget {
+  final double total;
+
+  const _TotalHeader({required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          'Total: ${CurrencyFormatter.format(total)}',
+          style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.w700, color: AppColors.primary),
+        ),
+      ),
     );
   }
 }
